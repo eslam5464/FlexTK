@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "mylibrary"
+version = "0.1.0"
+description = ""
+authors = ["Eslam <41278977+eslam5464@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "~3.12"
+b2sdk = "^2.3.0"
+pandas = "^2.2.2"
+pydantic = "^2.7.1"
+opencv-python = "^4.9.0.80"
+google-cloud-storage = "^2.16.0"
+pandera = "^0.19.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
