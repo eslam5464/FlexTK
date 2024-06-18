@@ -112,33 +112,27 @@ def configure_logging() -> None:
     """
     cwd = os.path.dirname(os.path.realpath(__file__))
     logs_folder_directory = os.path.join(cwd, "logs")
-    log_file_directory = os.path.join(logs_folder_directory, "log.jsonl").replace("\\", "\\\\")
-    config_file_location = os.path.join(cwd, "logging_config.json")
+    log_file_path = os.path.join(logs_folder_directory, "log.jsonl").replace("\\", "\\\\")
+    config_file_path = os.path.join(cwd, "logging_config.json")
     logger_dict = deepcopy(logging.root.manager.loggerDict)
+    logging.root.manager.loggerDict = logger_dict
 
     if not os.path.exists(logs_folder_directory):
         os.mkdir(logs_folder_directory)
 
-    for logger_name in logging.root.manager.loggerDict:
-        if logger_name.startswith("selenium.") or logger_name.startswith("urllib3."):
-            logging.getLogger(logger_name).handlers = []
-            logger_dict.pop(logger_name)
-
-    logging.root.manager.loggerDict = logger_dict
-
     replace_log_directory_name(
-        file_location=config_file_location,
+        file_location=config_file_path,
         old_string="LOG_FILE_DIRECTORY",
-        new_string=log_file_directory,
+        new_string=log_file_path,
     )
 
-    with open(os.path.join(cwd, "logging_config.json")) as config_file:
+    with open(config_file_path) as config_file:
         config = json.load(config_file)
 
     replace_log_directory_name(
-        file_location=config_file_location,
+        file_location=config_file_path,
         new_string="LOG_FILE_DIRECTORY",
-        old_string=log_file_directory,
+        old_string=log_file_path,
     )
 
     logging.config.dictConfig(config)
