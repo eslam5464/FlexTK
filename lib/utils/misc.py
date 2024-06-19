@@ -1,4 +1,6 @@
+import random
 import re
+import string
 from itertools import islice
 from typing import Iterable, Generator, Any
 
@@ -41,3 +43,18 @@ def find_indices(list_to_check: list, item_to_find: Any) -> list[int]:
     :return: A list of occurrences of the item inside list_to_check
     """
     return [idx for idx, value in enumerate(list_to_check) if value == item_to_find]
+
+
+def generate_random_password(length=15):
+    characters = string.ascii_letters + string.digits + "!@#$%^&*"
+
+    return ''.join(
+        [
+            random.choice(string.ascii_letters),
+            *[random.choice(characters) for _ in range(length - 1)]
+        ]
+    )
+
+
+for _ in range(30):
+    print(generate_random_password())
