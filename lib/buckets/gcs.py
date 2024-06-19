@@ -157,46 +157,27 @@ class GCS:
         blob = self.__client.bucket(self.__bucket.name).blob(folder_name)
         blob.upload_from_string("", content_type="application/x-www-form-urlencoded;charset=UTF-8")
 
-    def download_one_file_from_bucket(
-            self,
-            bucket_file_path: str,
-            output_file_path: str,
-    ) -> None:
-        """
-        Download a file from bucket's path to disk
-        :param bucket_file_path: Path for the file in the bucket
-        :param output_file_path: Path for the downloaded file
-        :raise ValueError: Download path not found
-        :raise GCSBucketNotSelectedError: No bucket is selected
-        """
-        if os.path.exists(output_file_path):
-            raise ValueError("Path does not exist to download the file into it")
-
-        self.__check_bucket_is_selected()
-        blob = self.__bucket.blob(bucket_file_path)
-        blob.download_to_filename(output_file_path)
-
     def download_multiple_files_from_bucket(
             self,
             files_to_download: list[DownloadMultiFiles],
-            output_file_path: str,
     ) -> None:
         """
         Download multiple files from bucket's path to disk
         :param files_to_download: List of file schemas to download
-        :param output_file_path: Path for the downloaded file
         :return: None
-        :raise ValueError: Download path not found
+        :raise NotADirectoryError: Download directory not found
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
 
-        if os.path.exists(output_file_path):
-            raise ValueError("Path does not exist to download the files into it")
-
         for file_entry in files_to_download:
+            if not os.path.isdir(file_entry.download_directory):
+                raise NotADirectoryError(
+                    f"Directory '{file_entry.download_directory}' does not exist to download the file into it"
+                )
+
             blob = self.__bucket.blob(file_entry.bucket_path)
-            destination_file_name = os.path.join(output_file_path, file_entry.name_on_disk)
+            destination_file_name = os.path.join(file_entry.download_directory, file_entry.filename_on_disk)
             blob.download_to_filename(destination_file_name)
 
     def delete_files_from_bucket(

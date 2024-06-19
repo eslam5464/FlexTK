@@ -11,4 +11,5 @@ class ServiceAccount(BaseMetadata):
 
 class DownloadMultiFiles(BaseMetadata):
     bucket_path: str
-    name_on_disk: str
+    filename_on_disk: str
+    download_directory: str
