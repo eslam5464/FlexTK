@@ -5,7 +5,7 @@ from lib.utils.operating_systems.mac import install_homebrew, is_homebrew_instal
 from lib.utils.operating_systems.windows import is_chocolatey_installed, install_chocolatey
 
 
-def install_libreoffice():
+def install_libre_office():
     """
     Installs LibreOffice depending on the operating system.
     :return: None
@@ -31,19 +31,19 @@ def install_libreoffice():
         raise OSError('Unsupported platform')
 
 
-def check_libreoffice_installed():
+def check_libre_office_installed():
     """
     Checks if LibreOffice is installed.
     :return: bool - True if LibreOffice is installed, False otherwise.
     """
     try:
-        subprocess.run([libreoffice_exec(), '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run([libre_office_exec(), '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
 
-def libreoffice_exec():
+def libre_office_exec():
     """
     Provides the path to the LibreOffice executable based on the operating system.
 

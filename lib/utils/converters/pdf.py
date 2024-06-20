@@ -2,13 +2,11 @@ import os.path
 import re
 import subprocess
 
-from lib.utils.libreoffice import (
-    check_libreoffice_installed,
-    install_libreoffice,
-    libreoffice_exec
-)
+from lib.utils.libre_office import libre_office_exec
+from lib.utils.wrappers.installed_apps import check_libre_office
 
 
+@check_libre_office
 def convert_document(
         source_document: str,
         output_dir: str,
@@ -33,11 +31,7 @@ def convert_document(
     if os.path.isdir(output_dir):
         raise NotADirectoryError("Output path is not a directory")
 
-    if not check_libreoffice_installed():
-        print("LibreOffice is not installed. Installing...")
-        install_libreoffice()
-
-    args = [libreoffice_exec(), '--headless', '--convert-to', 'pdf', source_document, '--outdir', output_dir]
+    args = [libre_office_exec(), '--headless', '--convert-to', 'pdf', source_document, '--outdir', output_dir]
     process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
     filename = re.search(r'-> (.*?) using filter', process.stdout.decode())
 
