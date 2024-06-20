@@ -3,7 +3,7 @@ import re
 import subprocess
 
 from lib.utils.libre_office import libre_office_exec
-from lib.utils.wrappers.installed_apps import check_libre_office
+from lib.wrappers.installed_apps import check_libre_office
 
 
 @check_libre_office

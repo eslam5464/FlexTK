@@ -2,7 +2,7 @@ import os.path
 import subprocess
 from enum import StrEnum
 
-from lib.utils.wrappers.installed_apps import check_ffmpeg
+from lib.wrappers.installed_apps import check_ffmpeg
 
 
 class SupportedAudioFormat(StrEnum):
