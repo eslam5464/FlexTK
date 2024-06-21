@@ -8,10 +8,10 @@ from lib.wrappers.installed_apps import check_libre_office
 
 @check_libre_office
 def convert_document(
-        source_document: str,
-        output_dir: str,
-        output_filename: str | None = None,
-        timeout: float | None = None
+    source_document: str,
+    output_dir: str,
+    output_filename: str | None = None,
+    timeout: float | None = None,
 ):
     """
     Converts a given input file (typically a document) to PDF using LibreOffice.
@@ -31,9 +31,22 @@ def convert_document(
     if os.path.isdir(output_dir):
         raise NotADirectoryError("Output path is not a directory")
 
-    args = [libre_office_exec(), '--headless', '--convert-to', 'pdf', source_document, '--outdir', output_dir]
-    process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
-    filename = re.search(r'-> (.*?) using filter', process.stdout.decode())
+    args = [
+        libre_office_exec(),
+        "--headless",
+        "--convert-to",
+        "pdf",
+        source_document,
+        "--outdir",
+        output_dir,
+    ]
+    process = subprocess.run(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+    )
+    filename = re.search(r"-> (.*?) using filter", process.stdout.decode())
 
     if not output_filename:
         return filename.group(1)

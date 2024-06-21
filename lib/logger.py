@@ -3,7 +3,7 @@ import logging
 import logging.config
 import os.path
 from copy import deepcopy
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 
 LOG_RECORD_BUILTIN_ATTRS = {
     "args",
@@ -39,9 +39,9 @@ class MyJSONFormatter(logging.Formatter):
     """
 
     def __init__(
-            self,
-            *,
-            fmt_keys: dict[str, str] | None = None,
+        self,
+        *,
+        fmt_keys: dict[str, str] | None = None,
     ):
         super().__init__()
         self.fmt_keys = fmt_keys if fmt_keys is not None else {}
@@ -64,7 +64,8 @@ class MyJSONFormatter(logging.Formatter):
         always_fields = {
             "message": record.getMessage(),
             "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc
+                record.created,
+                tz=timezone.utc,
             ).isoformat(),
         }
         if record.exc_info is not None:
@@ -74,9 +75,7 @@ class MyJSONFormatter(logging.Formatter):
             always_fields["stack_info"] = self.formatStack(record.stack_info)
 
         message = {
-            key: msg_val
-            if (msg_val := always_fields.pop(val, None)) is not None
-            else getattr(record, val)
+            key: (msg_val if (msg_val := always_fields.pop(val, None)) is not None else getattr(record, val))
             for key, val in self.fmt_keys.items()
         }
         message.update(always_fields)
@@ -112,7 +111,10 @@ def configure_logging() -> None:
     """
     cwd = os.path.dirname(os.path.realpath(__file__))
     logs_folder_directory = os.path.join(cwd, "logs")
-    log_file_path = os.path.join(logs_folder_directory, "log.jsonl").replace("\\", "\\\\")
+    log_file_path = os.path.join(logs_folder_directory, "log.jsonl").replace(
+        "\\",
+        "\\\\",
+    )
     config_file_path = os.path.join(cwd, "logging_config.json")
     logger_dict = deepcopy(logging.root.manager.loggerDict)
     logging.root.manager.loggerDict = logger_dict

@@ -2,16 +2,15 @@ import ast
 import os
 
 import pandas as pd
-
 from lib.schemas.pandas_dataframe import ExcelDataframeSheet
 
 SUPPORTED_EXCEL_EXTENSIONS = [".xlsx"]
 
 
 def export_dataframes(
-        all_dataframes: list[ExcelDataframeSheet],
-        output_directory: str,
-        output_excel_file_name: str,
+    all_dataframes: list[ExcelDataframeSheet],
+    output_directory: str,
+    output_excel_file_name: str,
 ) -> None:
     """
     Export the list of sheet schemas into one Excel file
@@ -25,14 +24,15 @@ def export_dataframes(
 
     if output_file_extension not in SUPPORTED_EXCEL_EXTENSIONS:
         raise TypeError(
-            f"Excel file extension not supported, "
-            f"only [{' and '.join(SUPPORTED_EXCEL_EXTENSIONS)}] is supported"
+            f"Excel file extension not supported, " f"only [{' and '.join(SUPPORTED_EXCEL_EXTENSIONS)}] is supported",
         )
 
     if not os.path.exists(output_directory):
         os.mkdir(output_directory)
 
-    with pd.ExcelWriter(os.path.join(output_directory, output_excel_file_name)) as pd_writer:
+    with pd.ExcelWriter(
+        os.path.join(output_directory, output_excel_file_name),
+    ) as pd_writer:
         for dataframe_entry in all_dataframes:
             dataframe_entry.dataframe.to_excel(
                 excel_writer=pd_writer,
@@ -54,8 +54,7 @@ def check_excel_file_if_supported(excel_filename: str) -> None:
 
     if file_extension not in SUPPORTED_EXCEL_EXTENSIONS:
         raise TypeError(
-            f"Excel file extension not supported, "
-            f"only {' and '.join(SUPPORTED_EXCEL_EXTENSIONS)} is supported"
+            f"Excel file extension not supported, " f"only {' and '.join(SUPPORTED_EXCEL_EXTENSIONS)} is supported",
         )
     elif not os.path.exists(excel_filename):
         raise FileNotFoundError("Folder does not exist")
@@ -71,7 +70,10 @@ def change_dtype_from_list_to_string(dataframe: pd.DataFrame, column_name: str):
     return dataframe.astype({column_name: str})
 
 
-def change_dtype_from_string_to_list(dataframe: pd.DataFrame, column_name: str) -> pd.DataFrame:
+def change_dtype_from_string_to_list(
+    dataframe: pd.DataFrame,
+    column_name: str,
+) -> pd.DataFrame:
     """
     Change the data type of the given column from string to list
     :param dataframe: A dataframe that is required to be changed

@@ -15,8 +15,8 @@ def create_temp_file(file_bytes: bytes, file_extension: str) -> str:
     :return: Path of the temporary file
     """
     with NamedTemporaryFile(
-            delete=False,
-            suffix=file_extension,
+        delete=False,
+        suffix=file_extension,
     ) as temp_file:
         file_path = temp_file.name
         temp_file.write(file_bytes)
@@ -55,7 +55,10 @@ def read_json_file(file_location: str) -> Any:
         return json.load(json_file)
 
 
-def read_csv_file(file_location: str, schema_model: MetaModel | None = None) -> pd.DataFrame:
+def read_csv_file(
+    file_location: str,
+    schema_model: MetaModel | None = None,
+) -> pd.DataFrame:
     """
     Reads the csv file from the specified location and return it as a validated pandas dataframe against
     the pandera schema if specified
@@ -72,7 +75,9 @@ def read_csv_file(file_location: str, schema_model: MetaModel | None = None) -> 
     supported_extension = ".csv"
 
     if file_extension != supported_extension:
-        raise ValueError(f"The file's extension '{file_extension}' is not a supported '{supported_extension}'")
+        raise ValueError(
+            f"The file's extension '{file_extension}' is not a supported '{supported_extension}'",
+        )
 
     csv_data = pd.read_csv(file_location)
 

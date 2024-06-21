@@ -4,7 +4,7 @@ import random
 import re
 import string
 from itertools import islice
-from typing import Iterable, Generator, Any
+from typing import Any, Generator, Iterable
 
 from lib.utils.files import create_temp_file
 
@@ -20,7 +20,7 @@ def split_iterable_by_chunk(iterable: Iterable, chunk_size: int) -> Generator:
     :raise ValueError: if chunk_size less than 1
     """
     if chunk_size < 1:
-        raise ValueError('chunk_size must be at greater than or equal to 1')
+        raise ValueError("chunk_size must be at greater than or equal to 1")
 
     it = iter(iterable)
 
@@ -58,11 +58,11 @@ def generate_random_password(length=15) -> str:
     """
     characters = string.ascii_letters + string.digits + "!@#$%^&*"
 
-    return ''.join(
+    return "".join(
         [
             random.choice(string.ascii_letters),
-            *[random.choice(characters) for _ in range(length - 1)]
-        ]
+            *[random.choice(characters) for _ in range(length - 1)],
+        ],
     )
 
 
@@ -72,8 +72,8 @@ def convert_audio_time(time_str: str) -> float:
     :param time_str: Time string in the format 'HH:MM:SS.sss'.
     :return: Total time in seconds as a float.
     """
-    hours, minutes, seconds = time_str.split(':')
-    seconds, milliseconds = seconds.split('.')
+    hours, minutes, seconds = time_str.split(":")
+    seconds, milliseconds = seconds.split(".")
     total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + float(f"0.{milliseconds}")
 
     return total_seconds
@@ -87,13 +87,23 @@ def execute_batch_script(batch_file_data: str) -> None:
     :raises OSError: If the script cannot be executed or the temporary file cannot be created.
     """
     is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
-    script_path = create_temp_file(file_bytes=batch_file_data.encode(), file_extension=".bat")
+    script_path = create_temp_file(
+        file_bytes=batch_file_data.encode(),
+        file_extension=".bat",
+    )
 
     if is_admin:
         os.system(script_path)
     else:
         params = f'"{script_path}"'
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", f'/c {params}', None, 1)
+        ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            "cmd.exe",
+            f"/c {params}",
+            None,
+            1,
+        )
 
     if os.path.exists(script_path):
         os.remove(script_path)

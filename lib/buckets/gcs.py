@@ -4,9 +4,8 @@ from dataclasses import dataclass, field
 
 from google.api_core.exceptions import NotFound
 from google.cloud.storage import Bucket, Client
-
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
-from lib.schemas.google_bucket import ServiceAccount, DownloadMultiFiles
+from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount
 from lib.utils.misc import validate_text
 
 
@@ -16,10 +15,10 @@ class GCS:
     __bucket: Bucket | None = field(default=None)
 
     def __init__(
-            self,
-            bucket_name: str,
-            service_account_json_path: str | None = None,
-            service_account_info: ServiceAccount | None = None,
+        self,
+        bucket_name: str,
+        service_account_json_path: str | None = None,
+        service_account_info: ServiceAccount | None = None,
     ):
         """
         A class representing the Google client for interacting with the Google cloud storage service.
@@ -32,12 +31,12 @@ class GCS:
         if service_account_info is None and service_account_json_path is None:
             raise ValueError(
                 "Both json path and information for service account parameters are None, "
-                "only one of them should be None"
+                "only one of them should be None",
             )
         elif service_account_info and service_account_json_path:
             raise ValueError(
                 "Both json path and information for service account parameters has values, "
-                "only one of then should have a value"
+                "only one of then should have a value",
             )
 
         if service_account_json_path is not None:
@@ -54,7 +53,7 @@ class GCS:
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
                     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                }
+                },
             )
         else:
             raise NotImplementedError("Parameter not supported")
@@ -70,8 +69,8 @@ class GCS:
         return self.__bucket
 
     def set_bucket(
-            self,
-            bucket_name: str,
+        self,
+        bucket_name: str,
     ) -> None:
         """
         Set the bucket
@@ -95,12 +94,14 @@ class GCS:
         folder_path_regex = r"^[^/].*\/$"
 
         if folder_name and not validate_text(folder_name, folder_path_regex):
-            raise ValueError("folder_path_in_bucket should have '/' at the end and not at the beginning")
+            raise ValueError(
+                "folder_path_in_bucket should have '/' at the end and not at the beginning",
+            )
 
     def upload_file_to_bucket(
-            self,
-            file_path: str,
-            folder_path_in_bucket: str | None = None,
+        self,
+        file_path: str,
+        folder_path_in_bucket: str | None = None,
     ) -> str:
         """
         Uploads a file to google bucket
@@ -127,8 +128,8 @@ class GCS:
         return blob.public_url.replace("googleapis", "cloud.google")
 
     def get_files_in_bucket_path(
-            self,
-            folder_path_in_bucket: str | None = None,
+        self,
+        folder_path_in_bucket: str | None = None,
     ) -> list[str]:
         """
         Lists all the blobs in the bucket.
@@ -144,8 +145,8 @@ class GCS:
         return [blob.name.replace(folder_path_in_bucket, "") for blob in blobs if blob.name != folder_path_in_bucket]
 
     def create_folder_in_bucket(
-            self,
-            folder_name: str,
+        self,
+        folder_name: str,
     ) -> None:
         """
         Creates a folder in the specified bucket
@@ -155,11 +156,14 @@ class GCS:
         self.__check_bucket_is_selected()
         self._validate_bucket_folder_name(folder_name)
         blob = self.__client.bucket(self.__bucket.name).blob(folder_name)
-        blob.upload_from_string("", content_type="application/x-www-form-urlencoded;charset=UTF-8")
+        blob.upload_from_string(
+            "",
+            content_type="application/x-www-form-urlencoded;charset=UTF-8",
+        )
 
     def download_multiple_files_from_bucket(
-            self,
-            files_to_download: list[DownloadMultiFiles],
+        self,
+        files_to_download: list[DownloadMultiFiles],
     ) -> None:
         """
         Download multiple files from bucket's path to disk
@@ -173,16 +177,19 @@ class GCS:
         for file_entry in files_to_download:
             if not os.path.isdir(file_entry.download_directory):
                 raise NotADirectoryError(
-                    f"Directory '{file_entry.download_directory}' does not exist to download the file into it"
+                    f"Directory '{file_entry.download_directory}' does not exist to download the file into it",
                 )
 
             blob = self.__bucket.blob(file_entry.bucket_path)
-            destination_file_name = os.path.join(file_entry.download_directory, file_entry.filename_on_disk)
+            destination_file_name = os.path.join(
+                file_entry.download_directory,
+                file_entry.filename_on_disk,
+            )
             blob.download_to_filename(destination_file_name)
 
     def delete_files_from_bucket(
-            self,
-            list_of_files: list[str],
+        self,
+        list_of_files: list[str],
     ) -> None:
         """
         Delete list of files from the specified bucket path
@@ -197,4 +204,6 @@ class GCS:
 
     def __check_bucket_is_selected(self):
         if not self.__bucket:
-            raise GCSBucketNotSelectedError("No bucket is selected to perform this operation")
+            raise GCSBucketNotSelectedError(
+                "No bucket is selected to perform this operation",
+            )

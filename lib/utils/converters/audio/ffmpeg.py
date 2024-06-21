@@ -12,9 +12,9 @@ class SupportedAudioFormat(StrEnum):
 
 @check_ffmpeg
 def convert_audio(
-        audio_file_path: str,
-        output_folder: str,
-        output_format: SupportedAudioFormat,
+    audio_file_path: str,
+    output_folder: str,
+    output_format: SupportedAudioFormat,
 ):
     """
     Converts an audio file to a specified output format and saves it to the specified output folder using ffmpeg.

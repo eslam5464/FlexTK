@@ -1,7 +1,6 @@
 import os
 
 import cv2
-
 from lib.schemas.media import VideoDetails
 
 
@@ -35,8 +34,8 @@ def get_video_details_open_cv(video_file_path: str) -> VideoDetails:
 
 
 def extract_all_frames_open_cv(
-        video_file_directory: str,
-        frames_output_directory: str,
+    video_file_directory: str,
+    frames_output_directory: str,
 ) -> None:
     """
     Extract all frames from a selected video using OpenCV
@@ -65,7 +64,10 @@ def extract_all_frames_open_cv(
             break
 
         frame_number_text = str(frame_number).zfill(len(str(frames_count)))
-        frame_filename = os.path.join(frames_output_directory, f"{video_filename}_{frame_number_text}.jpg")
+        frame_filename = os.path.join(
+            frames_output_directory,
+            f"{video_filename}_{frame_number_text}.jpg",
+        )
         cv2.imwrite(filename=frame_filename, img=frame)
         frame_number += 1
 

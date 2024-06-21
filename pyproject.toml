@@ -13,7 +13,34 @@ pydantic = "^2.7.1"
 opencv-python = "^4.9.0.80"
 google-cloud-storage = "^2.16.0"
 pandera = "^0.19.3"
+black = "^24.4.2"
+isort = "^5.13.2"
+pre-commit = "^3.7.1"
 
+[tool.poetry.dev-dependencies]
+black = "^24.4.2"
+isort = "^5.13.2"
+
+[tool.black]
+line-length = 120
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+src_paths = ["MyLibrary/lib", ]
 
 [build-system]
 requires = ["poetry-core"]

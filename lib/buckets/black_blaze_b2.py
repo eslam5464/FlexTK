@@ -4,18 +4,17 @@ from enum import StrEnum
 from typing import Tuple
 
 from b2sdk._internal.file_version import FileVersion  # noqa
-from b2sdk.v2 import B2Api, InMemoryAccountInfo, B2RawHTTPApi, FileIdAndName
+from b2sdk.v2 import B2Api, B2RawHTTPApi, FileIdAndName, InMemoryAccountInfo
 from b2sdk.v2.b2http import B2Http
 from b2sdk.v2.bucket import Bucket
 from b2sdk.v2.exception import NonExistentBucket
-from pydantic import AnyUrl
-
 from lib.exceptions import (
-    BlackBlazeError,
     B2BucketNotFoundError,
     B2BucketNotSelectedError,
+    BlackBlazeError,
 )
 from lib.schemas.black_blaze_bucket import ApplicationData
+from pydantic import AnyUrl
 
 
 class BucketTypeEnum(StrEnum):
@@ -41,10 +40,13 @@ class BlackBlaze:
             self.__b2_api.authorize_account(
                 realm="production",
                 application_key_id=app_data.app_id,
-                application_key=app_data.app_key
+                application_key=app_data.app_key,
             )
         except Exception as ex:
-            raise BlackBlazeError(message=f"Could not authorize back blaze account", exception=ex)
+            raise BlackBlazeError(
+                message=f"Could not authorize back blaze account",
+                exception=ex,
+            )
 
     @property
     def bucket(self):
@@ -63,7 +65,9 @@ class BlackBlaze:
                 exception=ex,
             )
         except Exception as ex:
-            raise BlackBlazeError(f"Error while selecting the bucket {bucket_name}, ex: {ex}")
+            raise BlackBlazeError(
+                f"Error while selecting the bucket {bucket_name}, ex: {ex}",
+            )
 
     def create_b2_bucket(self, bucket_name: str, bucket_type: BucketTypeEnum):
         """
@@ -75,7 +79,10 @@ class BlackBlaze:
             bucket_type = str(bucket_type.value)
             self.__b2_api.create_bucket(name=bucket_name, bucket_type=bucket_type)
         except Exception as ex:
-            raise BlackBlazeError(message=f"Could not create bucket {bucket_name}", exception=ex)
+            raise BlackBlazeError(
+                message=f"Could not create bucket {bucket_name}",
+                exception=ex,
+            )
 
     def delete_selected_bucket(self):
         """
@@ -89,15 +96,18 @@ class BlackBlaze:
         except NonExistentBucket as ex:
             raise B2BucketNotFoundError(
                 message=f"While deleting selected bucket {self.__bucket.name}, the bucket does not exist",
-                exception=ex
+                exception=ex,
             )
         except Exception as ex:
-            raise BlackBlazeError(f"Error while deleting selected bucket {self.__bucket.name}", exception=ex)
+            raise BlackBlazeError(
+                f"Error while deleting selected bucket {self.__bucket.name}",
+                exception=ex,
+            )
 
     def update_selected_bucket(
-            self,
-            bucket_type: BucketTypeEnum | None = None,
-            bucket_info: dict | None = None,
+        self,
+        bucket_type: BucketTypeEnum | None = None,
+        bucket_info: dict | None = None,
     ) -> Bucket:
         """
         Update the properties of the currently selected BlackBlaze B2 bucket.
@@ -116,12 +126,19 @@ class BlackBlaze:
             )
         except NonExistentBucket as ex:
             raise BlackBlazeError(
-                f"While updating selected bucket {self.__bucket.name}, the bucket does not exist, ex: {ex}"
+                f"While updating selected bucket {self.__bucket.name}, the bucket does not exist, ex: {ex}",
             )
         except Exception as ex:
-            raise BlackBlazeError(f"Error while updating selected bucket {self.__bucket.name}, ex: {ex}")
+            raise BlackBlazeError(
+                f"Error while updating selected bucket {self.__bucket.name}, ex: {ex}",
+            )
 
-    def upload_file(self, local_file_path: str, b2_file_name: str, file_info: dict | None = None) -> FileVersion:
+    def upload_file(
+        self,
+        local_file_path: str,
+        b2_file_name: str,
+        file_info: dict | None = None,
+    ) -> FileVersion:
         """
         Uploads a file to the selected BlackBlaze B2 bucket.
         :param local_file_path: a path to a file on local disk
@@ -132,7 +149,7 @@ class BlackBlaze:
         self.__check_bucket_is_selected()
 
         if file_info is None:
-            file_info = {'scanned': 'false'}
+            file_info = {"scanned": "false"}
 
         try:
             bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
@@ -143,11 +160,14 @@ class BlackBlaze:
             )
         except Exception as ex:
             os.remove(local_file_path)
-            raise BlackBlazeError(message=f"Error while uploading file '{local_file_path}'", exception=ex)
+            raise BlackBlazeError(
+                message=f"Error while uploading file '{local_file_path}'",
+                exception=ex,
+            )
 
     def get_download_url_by_name(
-            self,
-            file_name: str,
+        self,
+        file_name: str,
     ) -> str:
         """
         Gets the download url
@@ -160,11 +180,14 @@ class BlackBlaze:
         try:
             return bucket.get_download_url(file_name)
         except Exception as ex:
-            raise BlackBlazeError(f"Error while getting download url for file name '{file_name}'", exception=ex)
+            raise BlackBlazeError(
+                f"Error while getting download url for file name '{file_name}'",
+                exception=ex,
+            )
 
     def get_download_url_by_file_id(
-            self,
-            file_id: str,
+        self,
+        file_id: str,
     ) -> str:
         """
         Gets the download url using id for the file.
@@ -178,7 +201,7 @@ class BlackBlaze:
         except Exception as ex:
             raise BlackBlazeError(
                 message=f"Error while getting download url for file with id '{file_id}'",
-                exception=ex
+                exception=ex,
             )
 
     def delete_file(self, file_id: str, file_name: str) -> FileIdAndName:
@@ -191,14 +214,20 @@ class BlackBlaze:
         self.__check_bucket_is_selected()
 
         try:
-            return self.__b2_api.delete_file_version(file_id=file_id, file_name=file_name)
+            return self.__b2_api.delete_file_version(
+                file_id=file_id,
+                file_name=file_name,
+            )
         except Exception as ex:
-            raise BlackBlazeError(message=f"Error while deleting '{file_name}' with file id '{file_id}'", exception=ex)
+            raise BlackBlazeError(
+                message=f"Error while deleting '{file_name}' with file id '{file_id}'",
+                exception=ex,
+            )
 
     def get_temp_download_link(
-            self,
-            url: AnyUrl,
-            valid_duration_in_seconds: int = 900,
+        self,
+        url: AnyUrl,
+        valid_duration_in_seconds: int = 900,
     ) -> Tuple[str, str]:
         """
         returns the download link and the authorization header token for the get request
@@ -233,4 +262,6 @@ class BlackBlaze:
 
     def __check_bucket_is_selected(self):
         if not self.__bucket:
-            raise B2BucketNotSelectedError("No bucket is selected to perform this operation")
+            raise B2BucketNotSelectedError(
+                "No bucket is selected to perform this operation",
+            )

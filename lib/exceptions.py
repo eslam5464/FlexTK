@@ -33,7 +33,11 @@ class B2BucketNotFoundError(BlackBlazeError):
     Bucket does not exist in black blaze
     """
 
-    def __init__(self, message, exception: NonExistentBucket | None = NonExistentBucket):
+    def __init__(
+        self,
+        message,
+        exception: NonExistentBucket | None = NonExistentBucket,
+    ):
         super().__init__(message, exception)
 
 

@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, Any
+from typing import Any, Callable
 
 from lib.utils.ffmpeg import check_ffmpeg_installed, install_ffmpeg
 from lib.utils.libre_office import check_libre_office_installed, install_libre_office

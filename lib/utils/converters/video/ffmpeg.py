@@ -15,9 +15,9 @@ class SupportedVideoFormat(StrEnum):
 
 @check_ffmpeg
 def convert_video(
-        video_file_path: str,
-        output_folder: str,
-        output_format: SupportedVideoFormat,
+    video_file_path: str,
+    output_folder: str,
+    output_format: SupportedVideoFormat,
 ):
     """
     Converts a video to a specified output format and saves it to the specified output folder using ffmpeg.

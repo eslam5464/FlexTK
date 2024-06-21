@@ -10,9 +10,11 @@ def install_homebrew():
     try:
         subprocess.run(
             [
-                '/bin/bash', '-c',
-                '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)'
-            ], check=True
+                "/bin/bash",
+                "-c",
+                "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)",
+            ],
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         print(f"Failed to install Homebrew: {e}")
@@ -25,7 +27,12 @@ def is_homebrew_installed():
     :return: bool - True if Homebrew is installed, False otherwise.
     """
     try:
-        subprocess.run(['brew', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(
+            ["brew", "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False

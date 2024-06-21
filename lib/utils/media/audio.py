@@ -26,7 +26,7 @@ def get_audio_details_ffmpeg(audio_file_path: str) -> AudioDetails:
     output = subprocess.run(
         args=args,
         check=True,
-        capture_output=True
+        capture_output=True,
     )
     ffprobe_output = output.stderr.decode()
 
