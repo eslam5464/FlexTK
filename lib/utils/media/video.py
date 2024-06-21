@@ -2,10 +2,10 @@ import os
 
 import cv2
 
-from lib.schemas.videos import VideoDetails
+from lib.schemas.media import VideoDetails
 
 
-def get_video_details(video_file_path: str) -> VideoDetails:
+def get_video_details_open_cv(video_file_path: str) -> VideoDetails:
     """
     Extracts and returns details about a given video file.
     :param video_file_path: Path to the video file to extract details from.
@@ -34,7 +34,7 @@ def get_video_details(video_file_path: str) -> VideoDetails:
     )
 
 
-def extract_all_frames(
+def extract_all_frames_open_cv(
         video_file_directory: str,
         frames_output_directory: str,
 ) -> None:

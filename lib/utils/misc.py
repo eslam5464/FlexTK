@@ -45,7 +45,13 @@ def find_indices(list_to_check: list, item_to_find: Any) -> list[int]:
     return [idx for idx, value in enumerate(list_to_check) if value == item_to_find]
 
 
-def generate_random_password(length=15):
+def generate_random_password(length=15) -> str:
+    """
+    Generates a random password with a specified length.
+
+    :param length: The length of the generated password. Default is 15.
+    :return: A randomly generated password string.
+    """
     characters = string.ascii_letters + string.digits + "!@#$%^&*"
 
     return ''.join(
@@ -56,5 +62,14 @@ def generate_random_password(length=15):
     )
 
 
-for _ in range(30):
-    print(generate_random_password())
+def convert_audio_time(time_str: str) -> float:
+    """
+    Converts a time string in the format 'HH:MM:SS.sss' to total seconds.
+    :param time_str: Time string in the format 'HH:MM:SS.sss'.
+    :return: Total time in seconds as a float.
+    """
+    hours, minutes, seconds = time_str.split(':')
+    seconds, milliseconds = seconds.split('.')
+    total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + float(f"0.{milliseconds}")
+
+    return total_seconds
