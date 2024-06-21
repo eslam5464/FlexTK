@@ -1,8 +1,12 @@
+import ctypes
+import os
 import random
 import re
 import string
 from itertools import islice
 from typing import Iterable, Generator, Any
+
+from lib.utils.files import create_temp_file
 
 
 def split_iterable_by_chunk(iterable: Iterable, chunk_size: int) -> Generator:
@@ -73,3 +77,23 @@ def convert_audio_time(time_str: str) -> float:
     total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds) + float(f"0.{milliseconds}")
 
     return total_seconds
+
+
+def execute_batch_script(batch_file_data: str) -> None:
+    """
+    Executes a batch script from a string containing the batch file content.
+    :param batch_file_data: The content of the batch file as a string.
+    :return: None
+    :raises OSError: If the script cannot be executed or the temporary file cannot be created.
+    """
+    is_admin = bool(ctypes.windll.shell32.IsUserAnAdmin())
+    script_path = create_temp_file(file_bytes=batch_file_data.encode(), file_extension=".bat")
+
+    if is_admin:
+        os.system(script_path)
+    else:
+        params = f'"{script_path}"'
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", "cmd.exe", f'/c {params}', None, 1)
+
+    if os.path.exists(script_path):
+        os.remove(script_path)

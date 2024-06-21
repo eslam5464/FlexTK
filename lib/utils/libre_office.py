@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+from lib.utils.ffmpeg import execute_batch_script
 from lib.utils.operating_systems.mac import install_homebrew, is_homebrew_installed
 from lib.utils.operating_systems.windows import is_chocolatey_installed, install_chocolatey
 
@@ -18,7 +19,9 @@ def install_libre_office():
         if not is_chocolatey_installed():
             print("Chocolatey is not installed. Installing Chocolatey...")
             install_chocolatey()
-        subprocess.run(['choco', 'install', 'libreoffice', '-y'], check=check)
+
+        batch_file_data = "@echo off\nchoco install libreoffice -y"
+        execute_batch_script(batch_file_data)
     elif sys.platform == 'darwin':
         if not is_homebrew_installed():
             print("Homebrew is not installed. Installing Homebrew...")
