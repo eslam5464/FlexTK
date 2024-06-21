@@ -11,7 +11,7 @@ class SupportedAudioFormat(StrEnum):
 
 
 @check_ffmpeg
-def convert_audio(
+def convert_audio_ffmpeg(
     audio_file_path: str,
     output_folder: str,
     output_format: SupportedAudioFormat,

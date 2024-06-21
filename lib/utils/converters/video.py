@@ -14,7 +14,7 @@ class SupportedVideoFormat(StrEnum):
 
 
 @check_ffmpeg
-def convert_video(
+def convert_video_ffmpeg(
     video_file_path: str,
     output_folder: str,
     output_format: SupportedVideoFormat,

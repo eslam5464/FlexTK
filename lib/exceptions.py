@@ -64,7 +64,7 @@ class GCSBucketNotFoundError(GCSError):
     Bucket does not exist in Google cloud service
     """
 
-    def __init__(self, message, exception: NotFound | None = NotFound):
+    def __init__(self, message, exception: NotFound | None = None):
         super().__init__(message, exception)
 
 
