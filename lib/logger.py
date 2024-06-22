@@ -55,7 +55,7 @@ class MyJSONFormatter(logging.Formatter):
         message = self._prepare_log_dict(record)
         return json.dumps(message, default=str)
 
-    def _prepare_log_dict(self, record: logging.LogRecord):
+    def _prepare_log_dict(self, record: logging.LogRecord) -> dict[str, str | None]:
         """
         Prepares a dictionary representation of a log record.
         :param record: logging.LogRecord - The log record to process.
@@ -74,7 +74,7 @@ class MyJSONFormatter(logging.Formatter):
         if record.stack_info is not None:
             always_fields["stack_info"] = self.formatStack(record.stack_info)
 
-        message = {
+        message: dict[str, str | None] = {
             key: (msg_val if (msg_val := always_fields.pop(val, None)) is not None else getattr(record, val))
             for key, val in self.fmt_keys.items()
         }
@@ -87,7 +87,11 @@ class MyJSONFormatter(logging.Formatter):
         return message
 
 
-def replace_log_directory_name(file_location: str, old_string: str, new_string: str):
+def replace_log_directory_name(
+    file_location: str,
+    old_string: str,
+    new_string: str,
+) -> None:
     """
     Replaces occurrences of a string in a file with a new string.
     :param file_location: str - The path to the file to modify.

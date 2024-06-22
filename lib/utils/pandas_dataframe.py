@@ -60,7 +60,10 @@ def check_excel_file_if_supported(excel_filename: str) -> None:
         raise FileNotFoundError("Folder does not exist")
 
 
-def change_dtype_from_list_to_string(dataframe: pd.DataFrame, column_name: str):
+def change_dtype_from_list_to_string(
+    dataframe: pd.DataFrame,
+    column_name: str,
+) -> pd.DataFrame | None:
     """
     Change the data type of the given column from list to string
     :param dataframe: A dataframe that is required to be changed

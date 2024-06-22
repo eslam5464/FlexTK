@@ -3,7 +3,7 @@ import re
 import subprocess
 
 from lib.schemas.media import AudioDetails
-from lib.utils.misc import convert_audio_time
+from lib.utils.misc import convert_time_format_to_seconds
 from lib.wrappers.installed_apps import check_ffmpeg
 
 
@@ -46,7 +46,7 @@ def get_audio_details_ffmpeg(audio_file_path: str) -> AudioDetails:
     frequency = int(frequency_match.group(1)) if frequency_match else None
 
     return AudioDetails(
-        duration_seconds=convert_audio_time(duration),
+        duration_seconds=convert_time_format_to_seconds(duration),
         bit_rate_kb=bit_rate,
         no_of_channels=no_of_channels,
         frequency=frequency,

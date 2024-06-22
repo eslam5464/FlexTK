@@ -52,7 +52,6 @@ def find_indices(list_to_check: list, item_to_find: Any) -> list[int]:
 def generate_random_password(length=15) -> str:
     """
     Generates a random password with a specified length.
-
     :param length: The length of the generated password. Default is 15.
     :return: A randomly generated password string.
     """
@@ -66,7 +65,7 @@ def generate_random_password(length=15) -> str:
     )
 
 
-def convert_audio_time(time_str: str) -> float:
+def convert_time_format_to_seconds(time_str: str) -> float:
     """
     Converts a time string in the format 'HH:MM:SS.sss' to total seconds.
     :param time_str: Time string in the format 'HH:MM:SS.sss'.

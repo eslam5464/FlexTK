@@ -1,8 +1,7 @@
 import functools
 from typing import Any, Callable
 
-from lib.utils.ffmpeg import check_ffmpeg_installed, install_ffmpeg
-from lib.utils.libre_office import check_libre_office_installed, install_libre_office
+from lib.utils.apps import ffmpeg, libre_office
 
 
 def check_libre_office(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -16,9 +15,9 @@ def check_libre_office(func: Callable[..., Any]) -> Callable[..., Any]:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        if not check_libre_office_installed():
+        if not libre_office.check_libre_office_installed():
             print("LibreOffice is not installed. Installing...")
-            install_libre_office()
+            libre_office.install_libre_office()
 
         value = func(*args, **kwargs)
 
@@ -40,9 +39,9 @@ def check_ffmpeg(func: Callable[..., Any]) -> Callable[..., Any]:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        if not check_ffmpeg_installed():
+        if not ffmpeg.check_ffmpeg_installed():
             print("ffmpeg is not installed. Installing...")
-            install_ffmpeg()
+            ffmpeg.install_ffmpeg()
 
         value = func(*args, **kwargs)
 

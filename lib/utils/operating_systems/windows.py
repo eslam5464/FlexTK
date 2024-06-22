@@ -1,7 +1,7 @@
 import subprocess
 
 
-def is_chocolatey_installed():
+def is_chocolatey_installed() -> bool:
     """
     Checks if Chocolatey is installed.
     :return: bool - True if Chocolatey is installed, False otherwise.
@@ -18,7 +18,7 @@ def is_chocolatey_installed():
         return False
 
 
-def install_chocolatey():
+def install_chocolatey() -> None:
     """
     Installs Chocolatey on Windows.
     :return: None

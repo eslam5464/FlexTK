@@ -1,7 +1,7 @@
 import subprocess
 
 
-def install_homebrew():
+def install_homebrew() -> None:
     """
     Installs Homebrew on macOS.
     :return: None
@@ -21,7 +21,7 @@ def install_homebrew():
         raise
 
 
-def is_homebrew_installed():
+def is_homebrew_installed() -> bool:
     """
     Checks if Homebrew is installed.
     :return: bool - True if Homebrew is installed, False otherwise.

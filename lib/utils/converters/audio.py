@@ -15,7 +15,7 @@ def convert_audio_ffmpeg(
     audio_file_path: str,
     output_folder: str,
     output_format: SupportedAudioFormat,
-):
+) -> None:
     """
     Converts an audio file to a specified output format and saves it to the specified output folder using ffmpeg.
     :param audio_file_path: Path to the input audio file.

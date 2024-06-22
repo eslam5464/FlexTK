@@ -1,6 +1,7 @@
 import subprocess
 import sys
 
+from lib.utils.apps.base import PlatformTypeEnum
 from lib.utils.misc import execute_batch_script
 from lib.utils.operating_systems.mac import install_homebrew, is_homebrew_installed
 from lib.utils.operating_systems.windows import (
@@ -17,19 +18,19 @@ def install_ffmpeg() -> None:
     """
     check = True
 
-    if sys.platform == "win32":
+    if sys.platform == PlatformTypeEnum.windows:
         if not is_chocolatey_installed():
             print("Chocolatey is not installed. Installing Chocolatey...")
             install_chocolatey()
 
         batch_file_data = "@echo off\nchoco install ffmpeg-full -y"
         execute_batch_script(batch_file_data)
-    elif sys.platform == "darwin":
+    elif sys.platform == PlatformTypeEnum.mac:
         if not is_homebrew_installed():
             print("Homebrew is not installed. Installing Homebrew...")
             install_homebrew()
         subprocess.run(["brew", "install", "ffmpeg"], check=check)
-    elif sys.platform == "linux":
+    elif sys.platform == PlatformTypeEnum.linux:
         subprocess.run(["sudo", "apt-get", "update"], check=check)
         subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"], check=check)
     else:

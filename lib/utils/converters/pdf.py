@@ -2,7 +2,7 @@ import os.path
 import re
 import subprocess
 
-from lib.utils.libre_office import libre_office_exec
+from lib.utils.apps.libre_office import libre_office_exec
 from lib.wrappers.installed_apps import check_libre_office
 
 
@@ -12,7 +12,7 @@ def convert_document(
     output_dir: str,
     output_filename: str | None = None,
     timeout: float | None = None,
-):
+) -> str:
     """
     Converts a given input file (typically a document) to PDF using LibreOffice.
     Requires LibreOffice to be installed on the system if it is not installed
