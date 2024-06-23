@@ -29,7 +29,6 @@ def check_libre_office(func: Callable[..., Any]) -> Callable[..., Any]:
 def check_ffmpeg(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator that ensures ffmpeg is installed before executing the decorated function.
-
     If ffmpeg is not installed, the decorator will install it automatically before proceeding
     with the execution of the function.
 

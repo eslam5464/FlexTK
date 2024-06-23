@@ -85,3 +85,34 @@ def read_csv_file(
         csv_data = schema_model(csv_data)
 
     return csv_data
+
+
+def read_excel_file(
+    file_location: str,
+    schema_model: MetaModel | None = None,
+) -> pd.DataFrame:
+    """
+    Reads an Excel file and optionally validates its content against a provided schema model.
+    :param file_location: The path to the Excel file to be read.
+    :param schema_model: An optional schema model for validating the content of the Excel file. Default is None.
+    :return: A pandas DataFrame containing the data from the Excel file.
+    :raises FileNotFoundError: If the specified file does not exist.
+    :raises ValueError: If the file extension is not supported.
+    """
+    if not os.path.exists(file_location):
+        raise FileNotFoundError(f"CSV file not found in {file_location}")
+
+    file_extension = os.path.splitext(file_location)[-1]
+    supported_extension = [".xlsx", ".xls", ".xlsb"]
+
+    if file_extension not in supported_extension:
+        raise ValueError(
+            f"The extension '{file_extension}' the only supported are '{supported_extension}'",
+        )
+
+    csv_data = pd.read_csv(file_location)
+
+    if schema_model:
+        csv_data = schema_model(csv_data)
+
+    return csv_data

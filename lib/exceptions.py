@@ -36,7 +36,7 @@ class B2BucketNotFoundError(BlackBlazeError):
     def __init__(
         self,
         message,
-        exception: NonExistentBucket | None = NonExistentBucket,
+        exception: NonExistentBucket | None = None,
     ):
         super().__init__(message, exception)
 
