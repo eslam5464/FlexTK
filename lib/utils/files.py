@@ -1,7 +1,7 @@
 import json
 import os
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 from pandera.api.base.model import MetaModel
@@ -89,13 +89,18 @@ def read_csv_file(
 
 def read_excel_file(
     file_location: str,
+    sheet_name: str,
     schema_model: MetaModel | None = None,
+    engine: Literal["xlrd", "openpyxl", "pyxlsb"] = "openpyxl",
 ) -> pd.DataFrame:
     """
-    Reads an Excel file and optionally validates its content against a provided schema model.
+    Reads an Excel file from the specified location and sheet, optionally
+    validating its content against a provided schema model.
     :param file_location: The path to the Excel file to be read.
+    :param sheet_name: The name of the sheet to be read from the Excel file.
     :param schema_model: An optional schema model for validating the content of the Excel file. Default is None.
-    :return: A pandas DataFrame containing the data from the Excel file.
+    :param engine: The engine to use for reading the Excel file.
+    :return: A pandas DataFrame containing the data from the specified sheet of the Excel file.
     :raises FileNotFoundError: If the specified file does not exist.
     :raises ValueError: If the file extension is not supported.
     """
@@ -110,7 +115,7 @@ def read_excel_file(
             f"The extension '{file_extension}' the only supported are '{supported_extension}'",
         )
 
-    csv_data = pd.read_csv(file_location)
+    csv_data = pd.read_excel(io=file_location, sheet_name=sheet_name, engine=engine)
 
     if schema_model:
         csv_data = schema_model(csv_data)
