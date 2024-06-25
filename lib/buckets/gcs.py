@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass, field
 
 from google.api_core.exceptions import NotFound
+from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
 from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount
@@ -98,15 +99,15 @@ class GCS:
                 "folder_path_in_bucket should have '/' at the end and not at the beginning",
             )
 
-    def upload_file_to_bucket(
+    def upload_file(
         self,
         file_path: str,
-        folder_path_in_bucket: str | None = None,
+        bucket_folder_path: str | None = None,
     ) -> str:
         """
         Uploads a file to google bucket
         :param file_path: File path to upload to google bucket
-        :param folder_path_in_bucket: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
+        :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :return: URL of the uploaded file
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
@@ -115,11 +116,11 @@ class GCS:
         if not os.path.exists(file_path):
             raise ValueError(f"File {file_path} not found")
 
-        if not folder_path_in_bucket.endswith("/"):
-            folder_path_in_bucket += "/"
+        if not bucket_folder_path.endswith("/"):
+            bucket_folder_path += "/"
 
         filename = os.path.basename(file_path)
-        blob = self.__bucket.blob(folder_path_in_bucket + filename)
+        blob = self.__bucket.blob(bucket_folder_path + filename)
         content_type = mimetypes.guess_type(filename)[0]
 
         with open(file_path, "rb") as file_data:
@@ -127,7 +128,7 @@ class GCS:
 
         return blob.public_url.replace("googleapis", "cloud.google")
 
-    def get_files_in_bucket_path(
+    def get_files(
         self,
         folder_path_in_bucket: str | None = None,
     ) -> list[str]:
@@ -138,13 +139,16 @@ class GCS:
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
-        self._validate_bucket_folder_name(folder_path_in_bucket)
+
+        if not folder_path_in_bucket.endswith("/"):
+            folder_path_in_bucket += "/"
+
         blobs = self.__bucket.list_blobs(prefix=folder_path_in_bucket)
         folder_path_in_bucket = "" if not folder_path_in_bucket else folder_path_in_bucket
 
         return [blob.name.replace(folder_path_in_bucket, "") for blob in blobs if blob.name != folder_path_in_bucket]
 
-    def create_folder_in_bucket(
+    def create_folder(
         self,
         folder_name: str,
     ) -> None:
@@ -154,14 +158,17 @@ class GCS:
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
-        self._validate_bucket_folder_name(folder_name)
+
+        if not folder_name.endswith("/"):
+            folder_name += "/"
+
         blob = self.__client.bucket(self.__bucket.name).blob(folder_name)
         blob.upload_from_string(
             "",
             content_type="application/x-www-form-urlencoded;charset=UTF-8",
         )
 
-    def download_multiple_files_from_bucket(
+    def download_multiple_files(
         self,
         files_to_download: list[DownloadMultiFiles],
     ) -> None:
@@ -187,7 +194,7 @@ class GCS:
             )
             blob.download_to_filename(destination_file_name)
 
-    def delete_files_from_bucket(
+    def delete_files(
         self,
         list_of_files: list[str],
     ) -> None:
@@ -201,6 +208,31 @@ class GCS:
         for file_entry in list_of_files:
             blob = self.__bucket.blob(file_entry)
             blob.delete()
+
+    def get_folders(self, bucket_folder_path: str) -> list[str]:
+        def _item_to_value(iterator_item, item):
+            return item
+
+        if not bucket_folder_path.endswith("/"):
+            bucket_folder_path += "/"
+
+        extra_params = {
+            "projection": "noAcl",
+            "prefix": bucket_folder_path,
+            "delimiter": "/",
+        }
+        path = "/b/" + self.bucket.name + "/o"
+
+        iterator = HTTPIterator(
+            client=self.client,
+            api_request=self.client._connection.api_request,  # noqa
+            path=path,
+            items_key="prefixes",
+            item_to_value=_item_to_value,
+            extra_params=extra_params,
+        )
+
+        return [iter_entry.split(bucket_folder_path)[-1][:-1] for iter_entry in iterator]
 
     def __check_bucket_is_selected(self):
         if not self.__bucket:
