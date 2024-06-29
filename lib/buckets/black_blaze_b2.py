@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Tuple
+from typing import Self
 
 from b2sdk._internal.file_version import FileVersion  # noqa
 from b2sdk.v2 import B2Api, B2RawHTTPApi, FileIdAndName, InMemoryAccountInfo
@@ -13,7 +13,7 @@ from lib.exceptions import (
     B2BucketNotSelectedError,
     BlackBlazeError,
 )
-from lib.schemas.black_blaze_bucket import ApplicationData
+from lib.schemas.black_blaze_bucket import ApplicationData, FileDownloadLink
 from pydantic import AnyUrl
 
 
@@ -52,10 +52,11 @@ class BlackBlaze:
     def bucket(self):
         return self.__bucket
 
-    def select_bucket(self, bucket_name):
+    def select_bucket(self, bucket_name) -> Self:
         """
         Select a bucket in black blaze b2
         :param bucket_name: 'example-my-bucket-b2-1'  # must be unique in B2 (across all accounts!)
+        :return: The BlackBlaze instance.
         """
         try:
             self.__b2_api.get_bucket_by_name(bucket_name)
@@ -69,11 +70,14 @@ class BlackBlaze:
                 f"Error while selecting the bucket {bucket_name}, ex: {ex}",
             )
 
-    def create_b2_bucket(self, bucket_name: str, bucket_type: BucketTypeEnum):
+        return self
+
+    def create_b2_bucket(self, bucket_name: str, bucket_type: BucketTypeEnum) -> Self:
         """
         Create a bucket in black blaze b2
         :param bucket_name: 'example-my-bucket-b2-1'  # must be unique in B2 (across all accounts!)
         :param bucket_type: 'allPublic'  # or 'allPrivate'
+        :return: The BlackBlaze instance.
         """
         try:
             bucket_type = str(bucket_type.value)
@@ -84,9 +88,12 @@ class BlackBlaze:
                 exception=ex,
             )
 
-    def delete_selected_bucket(self):
+        return self
+
+    def delete_selected_bucket(self) -> Self:
         """
         Delete the currently selected BlackBlaze B2 bucket.
+        :return: The BlackBlaze instance.
         """
         self.__check_bucket_is_selected()
 
@@ -104,26 +111,30 @@ class BlackBlaze:
                 exception=ex,
             )
 
+        return self
+
     def update_selected_bucket(
         self,
         bucket_type: BucketTypeEnum | None = None,
         bucket_info: dict | None = None,
-    ) -> Bucket:
+    ) -> Self:
         """
         Update the properties of the currently selected BlackBlaze B2 bucket.
         :param bucket_type: The new type of the bucket (e.g., BucketTypeEnum.ALL_PUBLIC).
         :param bucket_info: The info to store with the bucket
-        :return: A Bucket object representing the updated bucket.
+        :return: The BlackBlaze instance.
         """
         self.__check_bucket_is_selected()
 
         try:
             bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
             bucket_type = bucket_type.value if isinstance(bucket_type, BucketTypeEnum) else None
-            return bucket.update(
+            bucket.update(
                 bucket_type=bucket_type,
                 bucket_info=bucket_info,
             )
+
+            return self
         except NonExistentBucket as ex:
             raise BlackBlazeError(
                 f"While updating selected bucket {self.__bucket.name}, the bucket does not exist, ex: {ex}",
@@ -153,6 +164,7 @@ class BlackBlaze:
 
         try:
             bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
+
             return bucket.upload_local_file(
                 local_file=local_file_path,
                 file_name=b2_file_name,
@@ -168,17 +180,19 @@ class BlackBlaze:
     def get_download_url_by_name(
         self,
         file_name: str,
-    ) -> str:
+    ) -> FileDownloadLink:
         """
         Gets the download url
         :param file_name: full path for the file
-        :return: download url
+        :return: FileDownloadLink object
         """
         self.__check_bucket_is_selected()
 
         bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
         try:
-            return bucket.get_download_url(file_name)
+            return FileDownloadLink(
+                download_url=bucket.get_download_url(file_name),
+            )
         except Exception as ex:
             raise BlackBlazeError(
                 f"Error while getting download url for file name '{file_name}'",
@@ -188,16 +202,18 @@ class BlackBlaze:
     def get_download_url_by_file_id(
         self,
         file_id: str,
-    ) -> str:
+    ) -> FileDownloadLink:
         """
         Gets the download url using id for the file.
-        :param file_id: file id in the selected bucket
-        :return: download url
+        :param file_id: File id in the selected bucket
+        :return: FileDownloadLink object
         """
         self.__check_bucket_is_selected()
 
         try:
-            return self.__b2_api.get_download_url_for_fileid(file_id)
+            return FileDownloadLink(
+                download_url=self.__b2_api.get_download_url_for_fileid(file_id),
+            )
         except Exception as ex:
             raise BlackBlazeError(
                 message=f"Error while getting download url for file with id '{file_id}'",
@@ -228,12 +244,12 @@ class BlackBlaze:
         self,
         url: AnyUrl,
         valid_duration_in_seconds: int = 900,
-    ) -> Tuple[str, str]:
+    ) -> FileDownloadLink:
         """
-        returns the download link and the authorization header token for the get request
-        :param valid_duration_in_seconds: duration in seconds, default is 15 minutes
-        :param url: download link with file id
-        :return: download_url, auth_token
+        Get the download link and the authorization header token for the get request
+        :param valid_duration_in_seconds: Duration in seconds, default is 15 minutes
+        :param url: Download link with file id
+        :return: FileDownloadLink object
         """
         self.__check_bucket_is_selected()
 
@@ -246,7 +262,10 @@ class BlackBlaze:
             )
             download_url = self.__bucket.get_download_url(file_info.file_name)
 
-            return download_url, auth_token
+            return FileDownloadLink(
+                download_url=download_url,
+                auth_token=auth_token,
+            )
         except Exception as ex:
             raise BlackBlazeError(message=f"Can not get download url", exception=ex)
 

@@ -1,13 +1,13 @@
 import mimetypes
 import os
 from dataclasses import dataclass, field
+from typing import Self
 
 from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
 from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount
-from lib.utils.misc import validate_text
 
 
 @dataclass(init=False)
@@ -72,11 +72,11 @@ class GCS:
     def set_bucket(
         self,
         bucket_name: str,
-    ) -> None:
+    ) -> Self:
         """
         Set the bucket
         :param bucket_name: Name of the bucket in GCS
-        :return: None
+        :return: The GCS instance.
         :raise GCSBucketNotFoundError: Bucket not found
         """
         try:
@@ -84,20 +84,7 @@ class GCS:
         except NotFound as ex:
             raise GCSBucketNotFoundError(message="Bucket not found", exception=ex)
 
-    @staticmethod
-    def _validate_bucket_folder_name(folder_name: str):
-        """
-        Validate the folder name for bucket
-        :param folder_name: Name of the folder to be validated
-        :return: None
-        :raise ValueError: folder_path_in_bucket must contain forward slash '/' at the end and not at the beginning
-        """
-        folder_path_regex = r"^[^/].*\/$"
-
-        if folder_name and not validate_text(folder_name, folder_path_regex):
-            raise ValueError(
-                "folder_path_in_bucket should have '/' at the end and not at the beginning",
-            )
+        return Self
 
     def upload_file(
         self,
@@ -151,10 +138,11 @@ class GCS:
     def create_folder(
         self,
         folder_name: str,
-    ) -> None:
+    ) -> Self:
         """
         Creates a folder in the specified bucket
-        :param folder_name: Name of the folder that will be created, the name must end with forward slash '/'
+        :param folder_name: Name of the folder that will be created
+        :return: The GCS instance.
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
@@ -168,14 +156,16 @@ class GCS:
             content_type="application/x-www-form-urlencoded;charset=UTF-8",
         )
 
+        return self
+
     def download_multiple_files(
         self,
         files_to_download: list[DownloadMultiFiles],
-    ) -> None:
+    ) -> Self:
         """
         Download multiple files from bucket's path to disk
         :param files_to_download: List of file schemas to download
-        :return: None
+        :return: The GCS instance.
         :raise NotADirectoryError: Download directory not found
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
@@ -194,13 +184,16 @@ class GCS:
             )
             blob.download_to_filename(destination_file_name)
 
+        return self
+
     def delete_files(
         self,
         list_of_files: list[str],
-    ) -> None:
+    ) -> Self:
         """
         Delete list of files from the specified bucket path
         :param list_of_files: files to be deleted
+        :return: The GCS instance.
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
@@ -208,6 +201,8 @@ class GCS:
         for file_entry in list_of_files:
             blob = self.__bucket.blob(file_entry)
             blob.delete()
+
+        return self
 
     def get_folders(self, bucket_folder_path: str) -> list[str]:
         def _item_to_value(iterator_item, item):
