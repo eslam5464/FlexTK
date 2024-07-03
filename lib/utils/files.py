@@ -1,4 +1,5 @@
 import json
+import mimetypes
 import os
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal
@@ -121,3 +122,12 @@ def read_excel_file(
         csv_data = schema_model(csv_data)
 
     return csv_data
+
+
+def get_file_type(file_location: str) -> str | None:
+    if not os.path.exists(file_location):
+        raise FileNotFoundError(f"File not found in {file_location}")
+
+    file_type, _ = mimetypes.guess_type(file_location)
+
+    return file_type

@@ -1,15 +1,23 @@
 import os.path
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import Self
 
 import cv2
 import numpy as np
-from cv2 import Mat  # noqa
+
+
+class RotationEnum(IntEnum):
+    clockwise_90: cv2.ROTATE_90_CLOCKWISE
+    counter_clockwise_90: cv2.ROTATE_90_COUNTERCLOCKWISE
+    flip_180: cv2.ROTATE_180
 
 
 @dataclass(init=False)
 class ImageProcessingOpenCV:
-    __image: Mat | np.ndarray
+    __image: cv2.Mat | np.ndarray
+    __image_extension: str
+    __image_name: str
 
     def __init__(self, image_path: str):
         """
@@ -20,10 +28,10 @@ class ImageProcessingOpenCV:
         self.select_image(image_path)
 
     @property
-    def image(self) -> Mat | np.ndarray:
+    def image(self) -> cv2.Mat | np.ndarray:
         """
         Returns the currently loaded image.
-        :return: The currently loaded image as a Mat or numpy ndarray.
+        :return: The currently loaded image as a cv2.Mat or numpy ndarray.
         """
         return self.__image
 
@@ -38,6 +46,7 @@ class ImageProcessingOpenCV:
             raise FileNotFoundError("Image does not exist")
 
         self.__image = cv2.imread(image_path)
+        self.__image_name, self.__image_extension = os.path.splitext(os.path.basename(image_path))
 
         return self
 
@@ -49,6 +58,16 @@ class ImageProcessingOpenCV:
         :return: The instance of the ImageProcessingOpenCV class.
         """
         self.__image = cv2.resize(self.__image, (width, height))
+
+        return self
+
+    def rotate_image(self, rotation_type: RotationEnum) -> Self:
+        """
+        Rotates the selected image based on the specified rotation type.
+        :param rotation_type: The type of rotation to apply, as defined in the RotationEnum.
+        :return: The instance of the ImageProcessingOpenCV class.
+        """
+        self.__image = cv2.rotate(self.__image, rotation_type)
 
         return self
 
@@ -69,10 +88,26 @@ class ImageProcessingOpenCV:
         :raises NotADirectoryError: If the output path does not exist.
         """
         image_root_path, _ = os.path.split(image_path)
+        _, image_extension = os.path.splitext(image_path)
 
         if not os.path.isdir(image_root_path):
             raise NotADirectoryError("Output path does not exist")
 
+        if image_extension != self.__image_extension:
+            raise ValueError(
+                f"Image extension {image_extension} not " f"the same as selected image {self.__image_extension}",
+            )
+
         cv2.imwrite(image_path, self.__image)
+
+        return self
+
+    def show_image(self) -> Self:
+        """
+        Displays the selected image in a window.
+        :return: The instance of the ImageProcessingOpenCV class.
+        """
+        cv2.imshow(winname=self.__image_name, mat=self.__image)
+        cv2.waitKey(0)
 
         return self
