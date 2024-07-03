@@ -15,3 +15,16 @@ class AudioDetails(BaseMetadata):
     bit_rate_kb: int | None
     frequency: int | None
     no_of_channels: int | None
+
+
+class ImageDetails(BaseMetadata):
+    filename: str
+    format_type: str
+    mime_type: str
+    width: int
+    height: int
+    color_space: str
+    color_type: str
+    color_type: str
+    file_size: str
+    no_of_pixels: str

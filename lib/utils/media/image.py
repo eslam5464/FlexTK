@@ -1,10 +1,14 @@
 import os.path
+import re
+import subprocess
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Self
 
 import cv2
 import numpy as np
+from lib.schemas.media import ImageDetails
+from lib.wrappers.installed_apps import check_image_magick
 
 
 class RotationEnum(IntEnum):
@@ -111,3 +115,48 @@ class ImageProcessingOpenCV:
         cv2.waitKey(0)
 
         return self
+
+
+@check_image_magick
+def get_image_details_magick(image_path: str) -> ImageDetails:
+    """
+    Retrieves detailed information about an image.
+    :param image_path: The file path to the image.
+    :return: An instance of the ImageDetails.
+    :raises FileNotFoundError: If the image file does not exist.
+    """
+    if not os.path.exists(image_path):
+        raise FileNotFoundError("Image does not exist")
+
+    args = [
+        "magick",
+        "identify",
+        "-verbose",
+        image_path,
+    ]
+    output = subprocess.run(
+        args=args,
+        check=True,
+        capture_output=True,
+    )
+    magick_output = output.stdout.decode()
+    info_dict = {}
+
+    for line in magick_output.splitlines():
+        match = re.match(r"^\s*(\w[\w ]*): (.+)$", line)
+        if match:
+            key = match.group(1).strip().lower()
+            value = match.group(2).strip()
+            info_dict[key] = value
+
+    return ImageDetails(
+        filename=info_dict.get("filename"),
+        format_type=info_dict.get("format"),
+        width=int(info_dict.get("geometry").split("x")[0]),
+        height=int(info_dict.get("geometry").split("x")[1].split("+")[0]),
+        color_space=info_dict.get("colorspace"),
+        color_type=info_dict.get("type"),
+        mime_type=info_dict.get("mime type"),
+        file_size=info_dict.get("filesize"),
+        no_of_pixels=info_dict.get("number pixels"),
+    )
