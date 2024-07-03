@@ -125,6 +125,12 @@ def read_excel_file(
 
 
 def get_file_type(file_location: str) -> str | None:
+    """
+    Determines the MIME type of the file given its location.
+    :param file_location: The file path to determine the type of.
+    :return: The MIME type of the file as a string if it can be determined, otherwise None.
+    :raises FileNotFoundError: If the specified file does not exist.
+    """
     if not os.path.exists(file_location):
         raise FileNotFoundError(f"File not found in {file_location}")
 
