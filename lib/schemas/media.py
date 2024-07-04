@@ -11,10 +11,12 @@ class VideoDetails(BaseMetadata):
 
 
 class AudioDetails(BaseMetadata):
+    filename: str
     duration_seconds: float | None
     bit_rate_kb: int | None
     frequency: int | None
     no_of_channels: int | None
+    sound_type: str | None
 
 
 class ImageDetails(BaseMetadata):

@@ -34,20 +34,25 @@ def get_audio_details_ffmpeg(audio_file_path: str) -> AudioDetails:
     bit_rate_pattern = r"bitrate: (\d+) kb/s"
     channels_pattern = r"(\d+) channels"
     frequency_pattern = r"(\d+) Hz"
+    sound_type_pattern = r"\bAudio:.*?, \d+ Hz, (stereo|mono)"
 
     duration_match = re.search(duration_pattern, ffprobe_output)
     bit_rate_match = re.search(bit_rate_pattern, ffprobe_output)
     frequency_match = re.search(frequency_pattern, ffprobe_output)
     channels_match = re.search(channels_pattern, ffprobe_output)
+    sound_type_match = re.search(sound_type_pattern, ffprobe_output, re.IGNORECASE)
 
     duration = duration_match.group(1) if duration_match else None
     bit_rate = int(bit_rate_match.group(1)) if bit_rate_match else None
     no_of_channels = int(channels_match.group(1)) if channels_match else None
     frequency = int(frequency_match.group(1)) if frequency_match else None
+    sound_type = sound_type_match.group(1) if sound_type_match else None
 
     return AudioDetails(
+        filename=os.path.basename(audio_file_path),
         duration_seconds=convert_time_format_to_seconds(duration),
         bit_rate_kb=bit_rate,
         no_of_channels=no_of_channels,
         frequency=frequency,
+        sound_type=sound_type,
     )
