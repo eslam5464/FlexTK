@@ -4,9 +4,10 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 [![Github][github-shield]][github-url]
 
-# MyLibrary
+# Flex Toolkit (flextk)
 
-MyLibrary is a Python library that provides a collection of helper functions and utilities to streamline various tasks
+Flex Toolkit is a command-line interface (CLI) tool that provides
+a collection of helper functions and utilities to streamline various tasks
 such as file handling, logging, cloud bucket management, data processing, and more.
 
 ## Features
@@ -20,15 +21,13 @@ such as file handling, logging, cloud bucket management, data processing, and mo
 
 ## Installation
 
-To install MyLibrary, clone the repository and install the dependencies:
+To install FlexTK, clone the repository and install the dependencies:
 
 ```bash
-git clone https://github.com/eslam5464/MyLibrary.git
-pip install poetry poetry-plugin-export
-poetry config virtualenvs.create false
-poetry export --without-hashes -f requirements.txt -o requirements.txt
-pip install --upgrade pip
-pip install -r requirements.txt
+git clone https://github.com/eslam5464/FlexTK.git
+pip install poetry
+poetry shell
+pip install .
 ```
 
 ## Contributing
@@ -66,7 +65,7 @@ Social: [LinkedIn][linkedin-url]
 
 [github-shield]: https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=fff&style=for-the-badge
 
-[github-url]: https://github.com/eslam5464/MyLibrary
+[github-url]: https://github.com/eslam5464/FlexTK
 
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 
@@ -74,4 +73,4 @@ Social: [LinkedIn][linkedin-url]
 
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
 
-[license-url]: https://github.com/eslam5464/MyLibrary/blob/main/LICENSE
+[license-url]: https://github.com/eslam5464/FlexTK/blob/main/LICENSE
