@@ -26,6 +26,9 @@ cryptography = "^42.0.8"
 black = "^24.4.2"
 isort = "^5.13.2"
 
+[tool.poetry.scripts]
+flextk = "flex_tk:cli"
+
 [tool.black]
 line-length = 120
 exclude = '''
@@ -45,7 +48,7 @@ exclude = '''
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-src_paths = ["MyLibrary/lib", ]
+src_paths = ["MyLibrary/lib", "MyLibrary/core", "MyLibrary/cli"]
 
 [build-system]
 requires = ["poetry-core"]
