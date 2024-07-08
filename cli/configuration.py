@@ -1,3 +1,5 @@
+import os.path
+import sys
 from base64 import urlsafe_b64encode
 from typing import Any
 
@@ -6,7 +8,6 @@ from cli.common import get_config_password
 from core.config import save_config
 from core.schema import ClickColors, ConfigKeys, ContextKeys
 from cryptography.fernet import Fernet
-from lib.buckets.gcs import GCS
 
 
 @click.command()
@@ -62,7 +63,7 @@ def reset_password(
 
 
 @click.command()
-@click.option("--bucket_name", prompt=True, help="Bucket name for GCS")
+@click.option("--bucket_name", prompt=True, help="Default bucket name for GCS to be selected")
 @click.option("--service_account", prompt=True, help="Path for JSON file for GCS service account")
 @click.pass_context
 def gcs(
@@ -71,12 +72,15 @@ def gcs(
     service_account: str,
 ):
     """Configure google cloud storage"""
+    if os.path.exists(service_account):
+        click.secho("Service account file does not exist", fg=ClickColors.red)
+        sys.exit()
+
+    if not service_account.lower().endswith(".json"):
+        click.secho("Service account is not a json file", fg=ClickColors.red)
+        sys.exit()
+
     config_password = get_config_password(click_context=ctx)
-
-    if config_password is None:
-        click.secho("Password is not set to create GCS configuration", fg=ClickColors.red)
-        return
-
     fernet = Fernet(config_password.encode())
     config_data: dict[str, Any] = ctx.obj[ContextKeys.config]
     config_data[ConfigKeys.gcs_bucket_name] = fernet.encrypt(bucket_name.encode()).decode()
@@ -96,11 +100,6 @@ def bb2(
 ):
     """Configure Black Blaze B2 storage"""
     config_password = get_config_password(click_context=ctx)
-
-    if config_password is None:
-        click.secho("Password is not set to create GCS configuration", fg=ClickColors.red)
-        return
-
     fernet = Fernet(config_password.encode())
     config_data: dict[str, Any] = ctx.obj[ContextKeys.config]
     config_data[ConfigKeys.bb2_app_id] = fernet.encrypt(app_id.encode()).decode()

@@ -1,8 +1,14 @@
 from enum import StrEnum
 
+from pydantic import BaseModel, ConfigDict
+
 
 class ContextKeys(StrEnum):
     config = "config"
+    cloud_gcs = "gcs"
+    cloud_gcs_config = "gcs_config"
+    cloud_bb2 = "bb2"
+    cloud_bb2_config = "bb2_config"
 
 
 class ConfigKeys(StrEnum):
@@ -31,3 +37,22 @@ class ClickColors(StrEnum):
     bright_cyan = "bright_cyan"
     bright_white = "bright_white"
     reset = "reset"
+
+
+class BaseMetadata(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        strict=True,
+        arbitrary_types_allowed=True,
+        extra="forbid",
+    )
+
+
+class GCSConfiguration(BaseMetadata):
+    bucket_name: str
+    service_account: str
+
+
+class BB2Configuration(BaseMetadata):
+    app_id: str
+    app_key: str

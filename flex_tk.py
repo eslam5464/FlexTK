@@ -1,5 +1,6 @@
 import click
 from cli import configuration
+from cli.cloud_storage import google
 from core.config import load_config
 from core.schema import ContextKeys
 
@@ -18,9 +19,16 @@ def cli(ctx: click.Context):
 
 
 @cli.group()
+def cloud():
+    """Cloud Storage toolkit."""
+
+
+@cli.group()
 def config():
     """Configuration for cli."""
 
+
+cloud.add_command(google.gcs)
 
 config.add_command(configuration.set_password)
 config.add_command(configuration.reset_password)
