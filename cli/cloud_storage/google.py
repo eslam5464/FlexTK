@@ -1,3 +1,5 @@
+import os
+
 import click
 from cli.common import get_gcs_configuration
 from core.schema import ClickColors, ContextKeys
@@ -30,6 +32,7 @@ def select_bucket(
     google_cloud_service: GCS = ctx.obj[ContextKeys.cloud_gcs]
     google_cloud_service = google_cloud_service.set_bucket(bucket_name)
     ctx.obj[ContextKeys.cloud_gcs] = google_cloud_service
+    click.secho(f"Selected bucket '{bucket_name}'", fg=ClickColors.green)
 
 
 @click.command()
@@ -52,6 +55,7 @@ def upload_file(
     """Upload a file to the specified bucket place"""
     google_cloud_service: GCS = ctx.obj[ContextKeys.cloud_gcs]
     google_cloud_service.upload_file(file_path=file_path, bucket_folder_path=bucket_path)
+    click.secho(f"Uploaded {os.path.basename(file_path)} to {bucket_path}", fg=ClickColors.green)
 
 
 @click.command()
@@ -88,6 +92,7 @@ def create_folder(
     """Create a folder in the specified bucket path"""
     google_cloud_service: GCS = ctx.obj[ContextKeys.cloud_gcs]
     google_cloud_service.create_folder(folder_name)
+    click.secho(f"Created bucket folder '{folder_name}'", fg=ClickColors.green)
 
 
 @click.command()
@@ -104,6 +109,7 @@ def delete_file(
     """Delete the file in the specified bucket path"""
     google_cloud_service: GCS = ctx.obj[ContextKeys.cloud_gcs]
     google_cloud_service.delete_files([file_path])
+    click.secho(f"Deleted file {file_path}", fg=ClickColors.green)
 
 
 gcs.add_command(get_files)

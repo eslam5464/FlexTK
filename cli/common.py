@@ -57,3 +57,33 @@ def get_gcs_configuration(click_context: click.Context) -> GCSConfiguration:
         bucket_name=gcs_bucket_name,
         service_account=gcs_service_account,
     )
+
+
+def get_bb2_configuration(click_context: click.Context) -> BB2Configuration:
+    """
+    Retrieves and decrypts the BB2 configuration settings.
+    :param click_context: The Click context containing the configuration data.
+    :return: An instance of BB2Configuration with decrypted settings.
+    :raises SystemExit: If the configuration is not set properly or the password is incorrect.
+    """
+    config_password = get_config_password(click_context=click_context)
+    fernet = Fernet(config_password.encode())
+    config_data: dict[str, Any] = click_context.obj[ContextKeys.config]
+    config_bb2_app_id = config_data.get(ConfigKeys.bb2_app_id)
+    config_bb2_app_key = config_data.get(ConfigKeys.bb2_app_key)
+
+    if not all([config_bb2_app_id, config_bb2_app_key]):
+        click.secho("Black Blaze not configured properly. Please reconfigure.", fg=ClickColors.red)
+        sys.exit()
+
+    try:
+        bb2_app_id = fernet.decrypt(config_bb2_app_id).decode()
+        bb2_app_key = fernet.decrypt(config_bb2_app_key).decode()
+    except InvalidToken as ex:
+        click.secho("Wrong password for configuration", fg=ClickColors.red)
+        sys.exit()
+
+    return BB2Configuration(
+        app_id=bb2_app_id,
+        app_key=bb2_app_key,
+    )

@@ -1,6 +1,6 @@
 import click
 from cli import configuration
-from cli.cloud_storage import google
+from cli.cloud_storage import black_blaze, google
 from core.config import load_config
 from core.schema import ContextKeys
 
@@ -29,6 +29,7 @@ def config():
 
 
 cloud.add_command(google.gcs)
+cloud.add_command(black_blaze.bb2)
 
 config.add_command(configuration.set_password)
 config.add_command(configuration.reset_password)
