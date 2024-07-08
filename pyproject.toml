@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "mylibrary"
+name = "flex_tk"
 version = "0.1.0"
 description = ""
 authors = ["Eslam <41278977+eslam5464@users.noreply.github.com>"]
@@ -19,6 +19,8 @@ pre-commit = "^3.7.1"
 xlrd = "^2.0.1"
 pyxlsb = "^1.0.10"
 pillow = "^10.4.0"
+pydantic-settings = "^2.3.4"
+cryptography = "^42.0.8"
 
 [tool.poetry.dev-dependencies]
 black = "^24.4.2"

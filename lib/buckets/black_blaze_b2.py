@@ -17,9 +17,12 @@ from lib.schemas.black_blaze_bucket import ApplicationData, FileDownloadLink
 from pydantic import AnyUrl
 
 
-class BucketTypeEnum(StrEnum):
+class B2BucketTypeEnum(StrEnum):
     all_public = "allPublic"
     all_private = "allPrivate"
+    snapshot = "snapshot"
+    share = "share"
+    restricted = "restricted"
 
 
 @dataclass(init=False)
@@ -72,7 +75,7 @@ class BlackBlaze:
 
         return self
 
-    def create_b2_bucket(self, bucket_name: str, bucket_type: BucketTypeEnum) -> Self:
+    def create_b2_bucket(self, bucket_name: str, bucket_type: B2BucketTypeEnum) -> Self:
         """
         Create a bucket in black blaze b2
         :param bucket_name: 'example-my-bucket-b2-1'  # must be unique in B2 (across all accounts!)
@@ -80,7 +83,6 @@ class BlackBlaze:
         :return: The BlackBlaze instance.
         """
         try:
-            bucket_type = str(bucket_type.value)
             self.__b2_api.create_bucket(name=bucket_name, bucket_type=bucket_type)
         except Exception as ex:
             raise BlackBlazeError(
@@ -115,7 +117,7 @@ class BlackBlaze:
 
     def update_selected_bucket(
         self,
-        bucket_type: BucketTypeEnum | None = None,
+        bucket_type: B2BucketTypeEnum | None = None,
         bucket_info: dict | None = None,
     ) -> Self:
         """
@@ -128,7 +130,7 @@ class BlackBlaze:
 
         try:
             bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
-            bucket_type = bucket_type.value if isinstance(bucket_type, BucketTypeEnum) else None
+            bucket_type = bucket_type.value if isinstance(bucket_type, B2BucketTypeEnum) else None
             bucket.update(
                 bucket_type=bucket_type,
                 bucket_info=bucket_info,
