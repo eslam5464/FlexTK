@@ -78,6 +78,22 @@ def convert_time_format_to_seconds(time_str: str) -> float:
     return total_seconds
 
 
+def convert_seconds_to_time_format(total_seconds: float) -> str:
+    """
+    Converts total seconds to a time string in the format 'HH:MM:SS.sss'.
+    :param total_seconds: Total time in seconds as a float.
+    :return: Time string in the format 'HH:MM:SS.sss'.
+    """
+    hours = int(total_seconds // 3600)
+    total_seconds %= 3600
+    minutes = int(total_seconds // 60)
+    total_seconds %= 60
+    seconds = int(total_seconds)
+    milliseconds = int((total_seconds - seconds) * 1000)
+
+    return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
+
+
 def execute_batch_script(batch_file_data: str) -> None:
     """
     Executes a batch script from a string containing the batch file content.

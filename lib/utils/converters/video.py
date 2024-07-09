@@ -1,16 +1,8 @@
 import os.path
 import subprocess
-from enum import StrEnum
 
+from lib.utils.media.video import SupportedVideoFormat
 from lib.wrappers.installed_apps import check_ffmpeg
-
-
-class SupportedVideoFormat(StrEnum):
-    mp4 = ".mp4"
-    avi = ".avi"
-    mov = ".mov"
-    mkv = ".mkv"
-    ts = ".ts"
 
 
 @check_ffmpeg
