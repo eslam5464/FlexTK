@@ -7,6 +7,7 @@ from lib.buckets.gcs import GCS
 
 
 @click.group()
+@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
 @click.pass_context
 def gcs(
     ctx: click.Context,

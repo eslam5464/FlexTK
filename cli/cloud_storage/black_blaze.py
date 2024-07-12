@@ -12,12 +12,14 @@ B2_BUCKET_TYPE_VALUES = [e.value for e in B2BucketTypeEnum]
 
 
 @click.group()
+@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
 @click.pass_context
 def bb2(
     ctx: click.Context,
+    password: str,
 ):
     """Black Blaze B2 Cloud Storage"""
-    bb2_config_data = get_bb2_configuration(click_context=ctx)
+    bb2_config_data = get_bb2_configuration(click_context=ctx, password=password)
     bb2_data = ApplicationData(
         app_id=bb2_config_data.app_id,
         app_key=bb2_config_data.app_key,

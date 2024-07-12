@@ -12,7 +12,7 @@ class ContextKeys(StrEnum):
 
 
 class ConfigKeys(StrEnum):
-    hashed_password = "hashed_password"
+    match_password = "match_password"
     gcs_bucket_name = "gcs_bucket_name"
     gcs_service_account = "gcs_service_account"
     bb2_app_id = "bb2_app_id"
