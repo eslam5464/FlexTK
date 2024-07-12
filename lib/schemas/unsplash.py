@@ -18,13 +18,13 @@ class UserProfileImage(BaseMetadata):
 
 
 class UserLinks(BaseMetadata):
-    self: AnyHttpUrl
+    api_user: AnyHttpUrl = Field(alias="self")
     html: AnyHttpUrl
-    photos: AnyHttpUrl
-    likes: AnyHttpUrl
-    portfolio: AnyHttpUrl
-    following: AnyHttpUrl
-    followers: AnyHttpUrl
+    api_user_photos: AnyHttpUrl = Field(alias="photos")
+    api_user_likes: AnyHttpUrl = Field(alias="likes")
+    api_user_portfolio: AnyHttpUrl = Field(alias="portfolio")
+    api_user_following: AnyHttpUrl = Field(alias="following")
+    api_user_followers: AnyHttpUrl = Field(alias="followers")
 
 
 class ResultUser(BaseMetadata):
@@ -63,10 +63,10 @@ class ResultUser(BaseMetadata):
 
 
 class ResultLinks(BaseMetadata):
-    self: AnyHttpUrl
+    api_image: AnyHttpUrl = Field(alias="self")
     html: AnyHttpUrl
     download: AnyHttpUrl
-    download_location: AnyHttpUrl
+    api_download: AnyHttpUrl = Field(alias="download_location")
 
 
 class ResultUrl(BaseMetadata):
