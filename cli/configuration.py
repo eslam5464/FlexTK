@@ -35,7 +35,7 @@ def set_password(
     if current_pass is None:
         save_config({ConfigKeys.hashed_password: key.decode()})
         click.secho("Password has been set", fg=ClickColors.green)
-        return
+        sys.exit()
 
     click.secho("Can't set password because it has already been set", fg=ClickColors.yellow)
 
@@ -106,3 +106,25 @@ def bb2(
     config_data[ConfigKeys.bb2_app_key] = fernet.encrypt(app_key.encode()).decode()
     save_config(config_data)
     click.secho("Black Blaze configuration is set", fg=ClickColors.green)
+
+
+@click.command()
+@click.option("--app_id", prompt=True, help="Unsplash application id")
+@click.option("--access_key", prompt=True, help="Unsplash access key")
+@click.option("--secret_key", prompt=True, help="Unsplash secret key")
+@click.pass_context
+def unsplash(
+    ctx: click.Context,
+    app_id: str,
+    access_key: str,
+    secret_key: str,
+):
+    """Configuration for unsplash to download images"""
+    config_password = get_config_password(click_context=ctx)
+    fernet = Fernet(config_password.encode())
+    config_data: dict[str, Any] = ctx.obj[ContextKeys.config]
+    config_data[ConfigKeys.unsplash_app_id] = fernet.encrypt(app_id.encode()).decode()
+    config_data[ConfigKeys.unsplash_access_key] = fernet.encrypt(access_key.encode()).decode()
+    config_data[ConfigKeys.unsplash_secret_key] = fernet.encrypt(secret_key.encode()).decode()
+    save_config(config_data)
+    click.secho("Unsplash configuration is set", fg=ClickColors.green)

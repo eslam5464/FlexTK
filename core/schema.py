@@ -17,6 +17,9 @@ class ConfigKeys(StrEnum):
     gcs_service_account = "gcs_service_account"
     bb2_app_id = "bb2_app_id"
     bb2_app_key = "bb2_app_key"
+    unsplash_app_id = "unsplash_app_id"
+    unsplash_access_key = "unsplash_access_key"
+    unsplash_secret_key = "unsplash_secret_key"
 
 
 class ClickColors(StrEnum):
