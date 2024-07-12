@@ -21,6 +21,7 @@ pyxlsb = "^1.0.10"
 pillow = "^10.4.0"
 pydantic-settings = "^2.3.4"
 cryptography = "^42.0.8"
+starlette = "^0.37.2"
 
 [tool.poetry.dev-dependencies]
 black = "^24.4.2"

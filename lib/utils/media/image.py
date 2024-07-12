@@ -1,14 +1,19 @@
+import json
 import os.path
 import re
 import subprocess
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Self
+from typing import Literal, Self
 
 import cv2
 import numpy as np
+import requests
 from lib.schemas.media import ImageDetails
+from lib.schemas.unsplash import UnsplashResponse
 from lib.wrappers.installed_apps import check_image_magick
+from pydantic import AnyHttpUrl
+from starlette import status
 
 
 class RotationEnum(IntEnum):
@@ -160,3 +165,84 @@ def get_image_details_magick(image_path: str) -> ImageDetails:
         file_size=info_dict.get("filesize"),
         no_of_pixels=info_dict.get("number pixels"),
     )
+
+
+def get_images_by_search_unsplash(
+    search_text: str,
+    access_key: str,
+) -> UnsplashResponse:
+    """
+    Searches for images on Unsplash based on the provided search text and access key.
+    :param search_text: The text to search for images.
+    :param access_key: The access key for the Unsplash API.
+    :return: An instance of UnsplashResponse containing the search results.
+    :raises ConnectionRefusedError: If the request is unacceptable or missing permissions.
+    :raises ConnectionAbortedError: If the access token is invalid.
+    :raises ConnectionError: If there is an internal error with Unsplash or an unknown response code.
+    """
+    unsplash_photos_api_url = "https://api.unsplash.com/search/photos"
+    unsplash_search_parameter = f"?query={search_text}"
+    unsplash_url = unsplash_photos_api_url + unsplash_search_parameter
+    unsplash_response = requests.get(
+        url=unsplash_url,
+        headers={"Authorization": f"Client-ID {access_key}"},
+    )
+
+    if unsplash_response.status_code == status.HTTP_200_OK:
+        pass
+    elif unsplash_response.status_code == status.HTTP_400_BAD_REQUEST:
+        raise ConnectionRefusedError(f"The request was unacceptable with reason: {unsplash_response.reason}")
+    elif unsplash_response.status_code == status.HTTP_401_UNAUTHORIZED:
+        raise ConnectionAbortedError(f"Invalid access token")
+    elif unsplash_response.status_code == status.HTTP_403_FORBIDDEN:
+        raise ConnectionRefusedError(f"Missing permissions with reason: {unsplash_response.reason}")
+    elif unsplash_response.status_code == status.HTTP_404_NOT_FOUND:
+        raise ConnectionRefusedError(f"The requested resource does not exist with reason: {unsplash_response.reason}")
+    elif unsplash_response.status_code in [status.HTTP_500_INTERNAL_SERVER_ERROR, status.HTTP_503_SERVICE_UNAVAILABLE]:
+        raise ConnectionError(f"Unsplash internal error with reason: {unsplash_response.reason}")
+    else:
+        raise ConnectionError(
+            f"Unknown response with code : {unsplash_response.status_code} " f"& reason: {unsplash_response.reason}",
+        )
+
+    unsplash_response_dict: dict = json.loads(unsplash_response.content)
+
+    return UnsplashResponse.model_validate(unsplash_response_dict)
+
+
+def download_images_by_search_unsplash(
+    search_text: str,
+    access_key: str,
+    images_download_path: str,
+    download_size: Literal["full", "regular", "small", "thumbnail"] = "regular",
+) -> None:
+    """
+    Downloads images from Unsplash based on the provided search text and access key,
+    saving them to the specified download path.
+    :param search_text: The text to search for images.
+    :param access_key: The access key for the Unsplash API.
+    :param images_download_path: The path where the images will be downloaded.
+    :param download_size: The size of the images to download (default is "regular").
+    :raises NotADirectoryError: If the images download path is not a directory.
+    """
+    if not os.path.isdir(images_download_path):
+        raise NotADirectoryError("Images download path is not a directory")
+
+    unsplash_model = get_images_by_search_unsplash(
+        search_text=search_text,
+        access_key=access_key,
+    )
+
+    for result_entry in unsplash_model.results:
+        image_url: AnyHttpUrl = result_entry.urls.model_dump().get(download_size, "regular")
+        image_extension = result_entry.urls.regular.__str__().split("&fm=")[-1].split("&")[0]
+        image_path = os.path.join(images_download_path, f"{result_entry.slug}.{image_extension}")
+
+        with open(image_path, "wb") as image_file:
+            image_file_response = requests.get(image_url, stream=True)
+
+            for block in image_file_response.iter_content(1024):
+                if not block:
+                    break
+
+                image_file.write(block)
