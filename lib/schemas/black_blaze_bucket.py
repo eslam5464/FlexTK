@@ -1,4 +1,4 @@
-from lib.schemas.base import BaseMetadata
+from .base import BaseMetadata
 
 
 class ApplicationData(BaseMetadata):
