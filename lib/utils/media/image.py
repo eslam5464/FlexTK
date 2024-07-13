@@ -167,22 +167,16 @@ def get_image_details_magick(image_path: str) -> ImageDetails:
     )
 
 
-def get_images_by_search_unsplash(
-    search_text: str,
-    access_key: str,
-) -> UnsplashResponse:
+def _get_images_from_unsplash(unsplash_url: str, access_key: str):
     """
-    Searches for images on Unsplash based on the provided search text and access key.
-    :param search_text: The text to search for images.
+    Internal function to fetch images from Unsplash based on a provided URL and access key.
+    :param unsplash_url: The URL for the Unsplash API request.
     :param access_key: The access key for the Unsplash API.
-    :return: An instance of UnsplashResponse containing the search results.
+    :return: An instance of UnsplashResponse containing the fetched images.
     :raises ConnectionRefusedError: If the request is unacceptable or missing permissions.
     :raises ConnectionAbortedError: If the access token is invalid.
     :raises ConnectionError: If there is an internal error with Unsplash or an unknown response code.
     """
-    unsplash_photos_api_url = "https://api.unsplash.com/search/photos"
-    unsplash_search_parameter = f"?query={search_text}"
-    unsplash_url = unsplash_photos_api_url + unsplash_search_parameter
     unsplash_response = requests.get(
         url=unsplash_url,
         headers={"Authorization": f"Client-ID {access_key}"},
@@ -208,6 +202,44 @@ def get_images_by_search_unsplash(
     unsplash_response_dict: dict = json.loads(unsplash_response.content)
 
     return UnsplashResponse.model_validate(unsplash_response_dict)
+
+
+def get_images_by_search_unsplash(
+    search_text: str,
+    access_key: str,
+) -> UnsplashResponse:
+    """
+    Searches for images on Unsplash based on the provided search text and access key.
+    :param search_text: The text to search for images.
+    :param access_key: The access key for the Unsplash API.
+    :return: An instance of UnsplashResponse containing the search results.
+    :raises ConnectionRefusedError: If the request is unacceptable or missing permissions.
+    :raises ConnectionAbortedError: If the access token is invalid.
+    :raises ConnectionError: If there is an internal error with Unsplash or an unknown response code.
+    """
+    unsplash_photos_api_url = "https://api.unsplash.com/search/photos"
+    unsplash_search_parameter = f"?query={search_text}"
+    unsplash_url = unsplash_photos_api_url + unsplash_search_parameter
+
+    return _get_images_from_unsplash(unsplash_url=unsplash_url, access_key=access_key)
+
+
+def get_random_images(access_key: str, count_of_images: int = 10) -> UnsplashResponse:
+    """
+    Retrieves a specified number of random images from Unsplash
+    :param access_key: The access key for the Unsplash API
+    :param count_of_images: The number of random images to retrieve (default is 10, maximum is 30)
+    :return: An instance of UnsplashResponse containing the random images
+    :raises ConnectionRefusedError: If the request is unacceptable or missing permissions.
+    :raises ConnectionAbortedError: If the access token is invalid.
+    :raises ConnectionError: If there is an internal error with Unsplash or an unknown response code.
+    """
+    count_of_images = 30 if count_of_images > 30 else count_of_images
+    unsplash_photos_api_url = "https://api.unsplash.com/photos/random"
+    unsplash_search_parameter = f"?count={count_of_images}"
+    unsplash_url = unsplash_photos_api_url + unsplash_search_parameter
+
+    return _get_images_from_unsplash(unsplash_url=unsplash_url, access_key=access_key)
 
 
 def download_images_by_search_unsplash(

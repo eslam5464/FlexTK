@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any
 
-from lib.schemas.base import BaseMetadata
 from pydantic import AnyHttpUrl, Field, field_validator
+
+from .base import BaseMetadata
 
 
 class AppServiceAccount(BaseMetadata):
