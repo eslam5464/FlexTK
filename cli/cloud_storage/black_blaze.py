@@ -3,7 +3,7 @@ import sys
 from typing import Literal
 
 import click
-from cli.common import get_bb2_configuration
+from core.helpers import get_bb2_configuration
 from core.schema import ClickColors, ContextKeys
 from lib.buckets.black_blaze_b2 import B2BucketTypeEnum, BlackBlaze
 from lib.schemas.black_blaze_bucket import ApplicationData
@@ -12,7 +12,7 @@ B2_BUCKET_TYPE_VALUES = [e.value for e in B2BucketTypeEnum]
 
 
 @click.group()
-@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
+@click.password_option(help="Configuration password", confirmation_prompt=False)
 @click.pass_context
 def bb2(
     ctx: click.Context,

@@ -1,19 +1,20 @@
 import os
 
 import click
-from cli.common import get_gcs_configuration
+from core.helpers import get_gcs_configuration
 from core.schema import ClickColors, ContextKeys
 from lib.buckets.gcs import GCS
 
 
 @click.group()
-@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
+@click.password_option(help="Configuration password", confirmation_prompt=False)
 @click.pass_context
 def gcs(
     ctx: click.Context,
+    password: str,
 ):
     """Google Cloud Storage"""
-    gcs_config = get_gcs_configuration(click_context=ctx)
+    gcs_config = get_gcs_configuration(click_context=ctx, password=password)
     ctx.obj[ContextKeys.cloud_gcs_config] = gcs_config
     ctx.obj[ContextKeys.cloud_gcs] = GCS(gcs_config.bucket_name, gcs_config.service_account)
 

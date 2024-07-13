@@ -4,20 +4,15 @@ from base64 import urlsafe_b64encode
 from typing import Any
 
 import click
-from cli.common import validate_password
 from core.config import save_config
+from core.helpers import validate_password
 from core.schema import ClickColors, ConfigKeys, ContextKeys
 from cryptography.fernet import Fernet
 from lib.utils.misc import generate_random_password
 
 
 @click.command()
-@click.option(
-    "--password",
-    prompt=True,
-    hide_input=True,
-    help="Password to set for configuration",
-)
+@click.password_option(help="Password to set for configuration")
 @click.pass_context
 def set_password(
     ctx: click.Context,
@@ -45,12 +40,7 @@ def set_password(
 
 
 @click.command()
-@click.option(
-    "--password",
-    prompt=True,
-    hide_input=True,
-    help="New password to reset the old one",
-)
+@click.password_option(help="New password to reset the old one")
 @click.pass_context
 def reset_password(
     ctx: click.Context,
@@ -78,7 +68,7 @@ def reset_password(
 
 
 @click.command()
-@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
+@click.password_option(help="Configuration password", confirmation_prompt=False)
 @click.option("--bucket_name", prompt=True, help="Default bucket name for GCS to be selected")
 @click.option("--service_account", prompt=True, help="Path for JSON file for GCS service account")
 @click.pass_context
@@ -107,7 +97,7 @@ def gcs(
 
 
 @click.command()
-@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
+@click.password_option(help="Configuration password", confirmation_prompt=False)
 @click.option("--app_id", prompt=True, help="Black blaze application id")
 @click.option("--app_key", prompt=True, help="Black blaze application key")
 @click.pass_context
@@ -128,7 +118,7 @@ def bb2(
 
 
 @click.command()
-@click.option("--password", prompt=True, hide_input=True, help="Configuration password")
+@click.password_option(help="Configuration password", confirmation_prompt=False)
 @click.option("--app_id", prompt=True, help="Unsplash application id")
 @click.option("--access_key", prompt=True, help="Unsplash access key")
 @click.option("--secret_key", prompt=True, help="Unsplash secret key")
