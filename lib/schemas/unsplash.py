@@ -91,9 +91,9 @@ class SubmissionType(BaseMetadata):
 
 
 class TopicSubmissions(BaseMetadata):
-    wallpapers: SubmissionType | None
-    animals: SubmissionType | None
-    nature: SubmissionType | None
+    wallpapers: SubmissionType | None = None
+    animals: SubmissionType | None = None
+    nature: SubmissionType | None = None
 
 
 class AlternativeSlugs(BaseMetadata):
@@ -114,13 +114,40 @@ class CoverPhotoBreadcrumb(BaseMetadata):
     type: str
 
 
-class CoverPhoto(BaseMetadata):
+class AncestryMetadata(BaseMetadata):
+    slug: str
+    pretty_slug: str
+
+
+class SourceAncestry(BaseMetadata):
+    type: AncestryMetadata = Field(alias="type")
+    category: AncestryMetadata
+    subcategory: AncestryMetadata | None = None
+
+
+class TagSource(BaseMetadata):
+    ancestry: SourceAncestry
+    title: str
+    subtitle: str
+    description: str
+    meta_title: str
+    meta_description: str
+    cover_photo: "ImageResult"
+
+
+class ResultTag(BaseMetadata):
+    type: str
+    title: str
+    source_data: TagSource | None = Field(default=None, alias="source")
+
+
+class ImageResult(BaseMetadata):
     id: str
     slug: str
     alternative_slugs: AlternativeSlugs
     created_at: datetime
     updated_at: datetime
-    promoted_at: datetime
+    promoted_at: datetime | None
     width: int
     height: int
     color: str
@@ -137,71 +164,9 @@ class CoverPhoto(BaseMetadata):
     topic_submissions: TopicSubmissions
     asset_type: str
     uploader_data: UserData = Field(alias="user")
-    premium: bool | None
-    plus: bool | None
-
-    @field_validator("created_at", "updated_at", "promoted_at", mode="before")
-    def parse_datetime(cls: "CoverPhoto", value: str | None):
-        if value:
-            try:
-                return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
-            except Exception as e:
-                raise ValueError(str(e))
-        else:
-            return None
-
-
-class AncestryMetadata(BaseMetadata):
-    slug: str
-    pretty_slug: str
-
-
-class SourceAncestry(BaseMetadata):
-    type: AncestryMetadata = Field(alias="type")
-    category: AncestryMetadata
-    subcategory: AncestryMetadata | None
-
-
-class TagSource(BaseMetadata):
-    ancestry: SourceAncestry
-    title: str
-    subtitle: str
-    description: str
-    meta_title: str
-    meta_description: str
-    cover_photo: CoverPhoto
-
-
-class Tag(BaseMetadata):
-    type: str
-    title: str
-    source_data: TagSource | None = Field(alias="source")
-
-
-class ImageResult(BaseMetadata):
-    id: str
-    slug: str
-    alternative_slugs: dict[str, str]
-    created_at: datetime
-    updated_at: datetime
-    promoted_at: datetime | None
-    width: int
-    height: int
-    color: str
-    blur_hash: str
-    description: str | None
-    alt_description: str
-    breadcrumbs: list
-    urls: ResultUrl
-    links: ResultLinks
-    likes: int
-    liked_by_user: bool
-    current_user_collections: list
-    sponsorship: None
-    topic_submissions: dict[str, dict]
-    asset_type: str
-    uploader_data: UserData = Field(alias="user")
-    tags: list[Tag]
+    tags: list[ResultTag] | None = None
+    premium: bool | None = None
+    plus: bool | None = None
 
     @field_validator("created_at", "updated_at", "promoted_at", mode="before")
     def parse_datetime(cls: "ImageResult", value: str | None):
