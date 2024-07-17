@@ -16,7 +16,7 @@ from pydantic import AnyHttpUrl
 from starlette import status
 
 
-class RotationEnum(IntEnum):
+class ImageRotationEnum(IntEnum):
     clockwise_90: cv2.ROTATE_90_CLOCKWISE
     counter_clockwise_90: cv2.ROTATE_90_COUNTERCLOCKWISE
     flip_180: cv2.ROTATE_180
@@ -70,7 +70,7 @@ class ImageProcessingOpenCV:
 
         return self
 
-    def rotate_image(self, rotation_type: RotationEnum) -> Self:
+    def rotate_image(self, rotation_type: ImageRotationEnum) -> Self:
         """
         Rotates the selected image based on the specified rotation type.
         :param rotation_type: The type of rotation to apply, as defined in the RotationEnum.
@@ -224,7 +224,7 @@ def get_images_by_search_unsplash(
     return _get_images_from_unsplash(unsplash_url=unsplash_url, access_key=access_key)
 
 
-def get_random_images(access_key: str, count_of_images: int = 10) -> UnsplashResponse:
+def get_random_images_unsplash(access_key: str, count_of_images: int = 10) -> UnsplashResponse:
     """
     Retrieves a specified number of random images from Unsplash
     :param access_key: The access key for the Unsplash API
