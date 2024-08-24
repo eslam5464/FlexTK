@@ -75,3 +75,12 @@ class GCSBucketNotSelectedError(GCSError):
 
     def __init__(self, message, exception: Exception | None = None):
         super().__init__(message, exception)
+
+
+class GoogleDriveError(CustomException):
+    """
+    Base exception for Google Drive
+    """
+
+    def __init__(self, message, exception: Exception | None = None):
+        super().__init__(message, exception)

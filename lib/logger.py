@@ -111,6 +111,10 @@ def configure_logging() -> None:
     """
     This function sets up logging by creating necessary directories,
     modifying configuration files, and applying the logging configuration.
+    can be used like below
+
+        >>> logger = logging.getLogger(__name__)
+        >>> logger.info("Test log message")
     :return: None
     """
     cwd = os.path.dirname(os.path.realpath(__file__))

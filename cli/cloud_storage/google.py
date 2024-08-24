@@ -3,7 +3,7 @@ import os
 import click
 from core.helpers import get_gcs_configuration
 from core.schema import ClickColors, ContextKeys
-from lib.buckets.gcs import GCS
+from lib.storage.buckets.gcs import GCS
 
 
 @click.group()
