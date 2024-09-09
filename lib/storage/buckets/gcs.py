@@ -7,7 +7,7 @@ from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
-from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount
+from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount, UploadedFile
 
 
 @dataclass(init=False)
@@ -90,12 +90,12 @@ class GCS:
         self,
         file_path: str,
         bucket_folder_path: str | None = None,
-    ) -> str:
+    ) -> UploadedFile:
         """
         Uploads a file to google bucket
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
-        :return: URL of the uploaded file
+        :return: An UploadedFile object contains the uploaded file data
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
@@ -109,11 +109,13 @@ class GCS:
         filename = os.path.basename(file_path)
         blob = self.__bucket.blob(bucket_folder_path + filename)
         content_type = mimetypes.guess_type(filename)[0]
+        blob.upload_from_filename(filename=file_path, content_type=content_type)
 
-        with open(file_path, "rb") as file_data:
-            blob.upload_from_string(data=file_data.read(), content_type=content_type)
-
-        return blob.public_url.replace("googleapis", "cloud.google")
+        return UploadedFile(
+            file_disk_path=file_path,
+            bucket_folder_path=f"{self.__bucket.name}/{bucket_folder_path}",
+            authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
+        )
 
     def get_files(
         self,
@@ -205,6 +207,12 @@ class GCS:
         return self
 
     def get_folders(self, bucket_folder_path: str) -> list[str]:
+        """
+        Retrieves a list of folder names from the specified Google Cloud Storage bucket path.
+        :param bucket_folder_path: The path of the folder in the GCS bucket to search for subfolders.
+        :return: A list of folder names (str) found under the specified `bucket_folder_path`.
+        """
+
         def _item_to_value(iterator_item, item):
             return item
 
@@ -230,6 +238,12 @@ class GCS:
         return [iter_entry.split(bucket_folder_path)[-1][:-1] for iter_entry in iterator]
 
     def __check_bucket_is_selected(self):
+        """
+        Checks whether a Google Cloud Storage bucket has been selected for operations.
+        This method raises a `GCSBucketNotSelectedError` if no bucket has been selected,
+        preventing any further actions that require a bucket.
+        :raises GCSBucketNotSelectedError: If no bucket is selected.
+        """
         if not self.__bucket:
             raise GCSBucketNotSelectedError(
                 "No bucket is selected to perform this operation",
