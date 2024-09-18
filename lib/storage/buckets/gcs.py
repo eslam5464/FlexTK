@@ -7,7 +7,12 @@ from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
-from lib.schemas.google_bucket import DownloadMultiFiles, ServiceAccount, UploadedFile
+from lib.schemas.google_bucket import (
+    BucketFile,
+    DownloadMultiFiles,
+    ServiceAccount,
+    UploadedFile,
+)
 
 
 @dataclass(init=False)
@@ -120,7 +125,7 @@ class GCS:
     def get_files(
         self,
         folder_path_in_bucket: str | None = None,
-    ) -> list[str]:
+    ) -> list[BucketFile]:
         """
         Lists all the blobs in the bucket.
         :param folder_path_in_bucket: Name of the folder inside the bucket e.g. path/to/folder/in/bucket/
@@ -135,7 +140,22 @@ class GCS:
         blobs = self.__bucket.list_blobs(prefix=folder_path_in_bucket)
         folder_path_in_bucket = "" if not folder_path_in_bucket else folder_path_in_bucket
 
-        return [blob.name.replace(folder_path_in_bucket, "") for blob in blobs if blob.name != folder_path_in_bucket]
+        return [
+            BucketFile(
+                id=blob.id,
+                basename=blob.name.replace(folder_path_in_bucket, ""),
+                file_path_in_bucket=blob.name,
+                bucket_name=self.__bucket.name,
+                public_url=blob.public_url,
+                authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
+                size_bytes=blob.size,
+                creation_date=blob.time_created,
+                modification_date=blob.updated,
+                md5_hash=blob.md5_hash,
+            )
+            for blob in blobs
+            if blob.name != folder_path_in_bucket
+        ]
 
     def create_folder(
         self,
