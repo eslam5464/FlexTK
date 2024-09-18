@@ -129,7 +129,7 @@ class GCS:
         """
         Lists all the blobs in the bucket.
         :param folder_path_in_bucket: Name of the folder inside the bucket e.g. path/to/folder/in/bucket/
-        :return: List of URL of the uploaded file
+        :return: List of BucketFile contain the files details
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
@@ -199,6 +199,7 @@ class GCS:
                     f"Directory '{file_entry.download_directory}' does not exist to download the file into it",
                 )
 
+        for file_entry in files_to_download:
             blob = self.__bucket.blob(file_entry.bucket_path)
             destination_file_name = os.path.join(
                 file_entry.download_directory,
