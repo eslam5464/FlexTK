@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import sys
 
@@ -9,6 +10,8 @@ from lib.utils.operating_systems.windows import (
     is_chocolatey_installed,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def install_ffmpeg() -> None:
     """
@@ -17,24 +20,25 @@ def install_ffmpeg() -> None:
     :raises OSError: If the platform is unsupported.
     """
     check = True
+    logger.warning("Installing FFMPEG")
 
     if sys.platform == PlatformTypeEnum.windows:
         if not is_chocolatey_installed():
-            print("Chocolatey is not installed. Installing Chocolatey...")
             install_chocolatey()
 
         batch_file_data = "@echo off\nchoco install ffmpeg-full -y"
         execute_batch_script(batch_file_data)
     elif sys.platform == PlatformTypeEnum.mac:
         if not is_homebrew_installed():
-            print("Homebrew is not installed. Installing Homebrew...")
             install_homebrew()
         subprocess.run(["brew", "install", "ffmpeg"], check=check)
     elif sys.platform == PlatformTypeEnum.linux:
         subprocess.run(["sudo", "apt-get", "update"], check=check)
         subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"], check=check)
     else:
-        raise OSError("Unsupported platform")
+        logger.error(f"Unsupported platform {sys.platform} to install ffmpeg")
+
+        raise OSError("Unsupported platform to install ffmpeg")
 
 
 def check_ffmpeg_installed() -> bool:
@@ -51,4 +55,6 @@ def check_ffmpeg_installed() -> bool:
         )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
+        logger.warning("FFMPEG is not installed")
+
         return False

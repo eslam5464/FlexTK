@@ -1,4 +1,7 @@
+import logging
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 def is_chocolatey_installed() -> bool:
@@ -15,6 +18,8 @@ def is_chocolatey_installed() -> bool:
         )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
+        logger.warning("Chocolatey is not installed")
+
         return False
 
 
@@ -24,6 +29,8 @@ def install_chocolatey() -> None:
     :return: None
     :raise subprocess.CalledProcessError: If the installation command fails.
     """
+    logger.warning("Installing Chocolatey")
+
     try:
         subprocess.run(
             [
@@ -35,6 +42,7 @@ def install_chocolatey() -> None:
             ],
             check=True,
         )
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install Chocolatey: {e}")
-        raise e
+    except subprocess.CalledProcessError as err:
+        logger.critical(msg="Failed to install Chocolatey", extra={"exception": str(err)})
+
+        raise SystemError("Failed to install Chocolatey")

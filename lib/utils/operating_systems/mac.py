@@ -1,4 +1,7 @@
+import logging
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 def install_homebrew() -> None:
@@ -7,6 +10,8 @@ def install_homebrew() -> None:
     :return: None
     :raise subprocess.CalledProcessError: If the installation command fails.
     """
+    logger.warning("Installing Homebrew")
+
     try:
         subprocess.run(
             [
@@ -16,9 +21,10 @@ def install_homebrew() -> None:
             ],
             check=True,
         )
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install Homebrew: {e}")
-        raise
+    except subprocess.CalledProcessError as err:
+        logger.critical(msg="Failed to install Homebrew", extra={"exception": str(err)})
+
+        raise SystemError("Failed to install Homebrew")
 
 
 def is_homebrew_installed() -> bool:
@@ -35,4 +41,6 @@ def is_homebrew_installed() -> bool:
         )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+        logger.warning("Homebrew is not installed")
+
+    return False

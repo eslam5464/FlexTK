@@ -1,7 +1,10 @@
 import functools
+import logging
 from typing import Any, Callable
 
 from lib.utils.apps import ffmpeg, image_magick, libre_office
+
+logger = logging.getLogger(__name__)
 
 
 def check_libre_office(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -16,7 +19,6 @@ def check_libre_office(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not libre_office.check_libre_office_installed():
-            print("LibreOffice is not installed. Installing...")
             libre_office.install_libre_office()
 
         value = func(*args, **kwargs)
@@ -39,7 +41,6 @@ def check_ffmpeg(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not ffmpeg.check_ffmpeg_installed():
-            print("ffmpeg is not installed. Installing...")
             ffmpeg.install_ffmpeg()
 
         value = func(*args, **kwargs)
@@ -60,7 +61,6 @@ def check_image_magick(func: Callable[..., Any]) -> Callable[..., Any]:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not image_magick.check_image_magick_installed():
-            print("Image magick is not installed. Installing...")
             image_magick.install_image_magick()
 
         value = func(*args, **kwargs)
