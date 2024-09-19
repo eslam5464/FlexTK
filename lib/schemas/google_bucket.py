@@ -1,6 +1,7 @@
+import os
 from datetime import datetime
 
-from pydantic import HttpUrl
+from pydantic import HttpUrl, field_validator
 
 from .base import BaseMetadata
 
@@ -13,10 +14,19 @@ class ServiceAccount(BaseMetadata):
     client_id: str
 
 
-class DownloadMultiFiles(BaseMetadata):
+class DownloadBucketFile(BaseMetadata):
     bucket_path: str
     filename_on_disk: str
     download_directory: str
+
+    @field_validator("download_directory")
+    def directory_must_exist(cls: "DownloadBucketFile", value: str) -> str:
+        if not os.path.isdir(value):
+            raise NotADirectoryError(
+                f"Directory '{value}' does not exist to download the file into it",
+            )
+
+        return value
 
 
 class UploadedFile(BaseMetadata):

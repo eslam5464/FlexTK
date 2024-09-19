@@ -9,7 +9,7 @@ from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
 from lib.schemas.google_bucket import (
     BucketFile,
-    DownloadMultiFiles,
+    DownloadBucketFile,
     ServiceAccount,
     UploadedFile,
 )
@@ -182,7 +182,7 @@ class GCS:
 
     def download_multiple_files(
         self,
-        files_to_download: list[DownloadMultiFiles],
+        files_to_download: list[DownloadBucketFile],
     ) -> Self:
         """
         Download multiple files from bucket's path to disk
@@ -192,12 +192,6 @@ class GCS:
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
-
-        for file_entry in files_to_download:
-            if not os.path.isdir(file_entry.download_directory):
-                raise NotADirectoryError(
-                    f"Directory '{file_entry.download_directory}' does not exist to download the file into it",
-                )
 
         for file_entry in files_to_download:
             blob = self.__bucket.blob(file_entry.bucket_path)
