@@ -23,31 +23,17 @@ class GCS:
     def __init__(
         self,
         bucket_name: str,
-        service_account_json_path: str | None = None,
-        service_account_info: ServiceAccount | None = None,
+        service_account_info: ServiceAccount | str,
     ):
         """
         A class representing the Google client for interacting with the Google cloud storage service.
         It provides methods for interacting with the Google cloud service.
-        :param service_account_json_path: Name of the file to upload
-        :param service_account_info: Service account information schema
-        :raise ValueError: Both service_account_info and service_account_json_path are None or both have values
+        :param service_account_info: Service account information schema or the path to the service account
         :raise GCSBucketNotFoundError: Bucket not found
         """
-        if service_account_info is None and service_account_json_path is None:
-            raise ValueError(
-                "Both json path and information for service account parameters are None, "
-                "only one of them should be None",
-            )
-        elif service_account_info and service_account_json_path:
-            raise ValueError(
-                "Both json path and information for service account parameters has values, "
-                "only one of then should have a value",
-            )
-
-        if service_account_json_path is not None:
-            self.__client = Client.from_service_account_json(service_account_json_path)
-        elif service_account_info is not None:
+        if isinstance(service_account_info, str):
+            self.__client = Client.from_service_account_json(service_account_info)
+        elif isinstance(service_account_info, ServiceAccount):
             self.__client = Client.from_service_account_info(
                 {
                     "type": "service_account",
