@@ -13,7 +13,11 @@ from lib.exceptions import (
     B2BucketNotSelectedError,
     BlackBlazeError,
 )
-from lib.schemas.black_blaze_bucket import ApplicationData, FileDownloadLink
+from lib.schemas.black_blaze_bucket import (
+    ApplicationData,
+    FileDownloadLink,
+    UploadedFileInfo,
+)
 from pydantic import AnyUrl
 
 
@@ -150,7 +154,7 @@ class BlackBlaze:
         self,
         local_file_path: str,
         b2_file_name: str,
-        file_info: dict | None = None,
+        file_info: UploadedFileInfo | None = None,
     ) -> FileVersion:
         """
         Uploads a file to the selected BlackBlaze B2 bucket.
@@ -162,7 +166,9 @@ class BlackBlaze:
         self.__check_bucket_is_selected()
 
         if file_info is None:
-            file_info = {"scanned": "false"}
+            file_info = UploadedFileInfo(
+                scanned=False,
+            )
 
         try:
             bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
@@ -170,7 +176,7 @@ class BlackBlaze:
             return bucket.upload_local_file(
                 local_file=local_file_path,
                 file_name=b2_file_name,
-                file_info=file_info,
+                file_info=file_info.model_dump(),
             )
         except Exception as ex:
             os.remove(local_file_path)

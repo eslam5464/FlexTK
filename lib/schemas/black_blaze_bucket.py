@@ -9,3 +9,7 @@ class ApplicationData(BaseMetadata):
 class FileDownloadLink(BaseMetadata):
     download_url: str
     auth_token: str | None
+
+
+class UploadedFileInfo(BaseMetadata):
+    scanned: bool
