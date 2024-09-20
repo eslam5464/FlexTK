@@ -9,6 +9,7 @@ from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
 from lib.schemas.google_bucket import (
     BucketFile,
+    BucketFolder,
     DownloadBucketFile,
     ServiceAccount,
     UploadedFile,
@@ -207,11 +208,11 @@ class GCS:
 
         return self
 
-    def get_folders(self, bucket_folder_path: str) -> list[str]:
+    def get_folders(self, bucket_folder_path: str) -> list[BucketFolder]:
         """
         Retrieves a list of folder names from the specified Google Cloud Storage bucket path.
         :param bucket_folder_path: The path of the folder in the GCS bucket to search for subfolders.
-        :return: A list of folder names (str) found under the specified `bucket_folder_path`.
+        :return: A list of BucketFolder objects found under the specified `bucket_folder_path`.
         """
 
         def _item_to_value(iterator_item, item):
@@ -236,7 +237,13 @@ class GCS:
             extra_params=extra_params,
         )
 
-        return [iter_entry.split(bucket_folder_path)[-1][:-1] for iter_entry in iterator]
+        return [
+            BucketFolder(
+                name=iter_entry.split(bucket_folder_path)[-1][:-1],
+                bucket_folder_path=bucket_folder_path,
+            )
+            for iter_entry in iterator
+        ]
 
     def __check_bucket_is_selected(self):
         """

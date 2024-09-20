@@ -46,3 +46,8 @@ class BucketFile(BaseMetadata):
     md5_hash: str
     creation_date: datetime
     modification_date: datetime
+
+
+class BucketFolder(BaseMetadata):
+    name: str
+    bucket_folder_path: str
