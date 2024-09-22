@@ -139,6 +139,8 @@ class GCS:
                 creation_date=blob.time_created,
                 modification_date=blob.updated,
                 md5_hash=blob.md5_hash,
+                crc32c_checksum=blob.crc32c,
+                content_type=blob.content_type,
             )
             for blob in blobs
             if blob.name != folder_path_in_bucket

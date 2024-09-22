@@ -1,3 +1,4 @@
+import base64
 import os
 from datetime import datetime
 
@@ -44,8 +45,22 @@ class BucketFile(BaseMetadata):
     public_url: str
     size_bytes: int
     md5_hash: str
+    crc32c_checksum: int
+    content_type: str
     creation_date: datetime
     modification_date: datetime
+
+    @field_validator("md5_hash")
+    def decode_md5_hash(cls, value: str) -> str:
+        decoded_bytes = base64.b64decode(value)
+
+        return decoded_bytes.hex()
+
+    @field_validator("crc32c_checksum", mode="before")
+    def decode_crc32c_checksum(cls, value: str) -> int:
+        decoded_bytes = base64.b64decode(value)
+
+        return int.from_bytes(decoded_bytes, byteorder="big")
 
 
 class BucketFolder(BaseMetadata):
