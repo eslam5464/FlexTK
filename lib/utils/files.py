@@ -1,9 +1,11 @@
+import hashlib
 import json
 import mimetypes
 import os
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal
 
+import crc32c
 import pandas as pd
 from pandera.api.base.model import MetaModel
 
@@ -137,3 +139,38 @@ def get_file_type(file_location: str) -> str | None:
     file_type, _ = mimetypes.guess_type(file_location)
 
     return file_type
+
+
+def calculate_md5_hash(file_location: str) -> str:
+    """
+    Calculates the MD5 hash of a file.
+    :param file_location: The file path of the input file for which the MD5 hash is to be calculated.
+    :return: The computed MD5 hash of the file as a hexadecimal string.
+    :raises FileNotFoundError: If the specified file does not exist at the provided file location.
+    """
+    if not os.path.exists(file_location):
+        raise FileNotFoundError(f"File not found in {file_location}")
+
+    hash_md5 = hashlib.md5()
+
+    with open(file_location, "rb") as file_binary:
+        for chunk in iter(lambda: file_binary.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
+
+
+def calculate_crc32c_checksum(file_location: str) -> int:
+    """
+    Calculates the CRC32C checksum of a file.
+    :param file_location: The file path of the input file for which the CRC32C hash is to be calculated.
+    :return: The computed CRC32C checksum of the file as an integer.
+    :raises FileNotFoundError: If the specified file does not exist at the provided file location.
+    """
+    if not os.path.exists(file_location):
+        raise FileNotFoundError(f"File not found in {file_location}")
+
+    with open(file_location, "rb") as file_bytes:
+        data = file_bytes.read()
+
+    return crc32c.crc32c(data)
