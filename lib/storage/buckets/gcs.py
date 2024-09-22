@@ -81,12 +81,14 @@ class GCS:
     def upload_file(
         self,
         file_path: str,
-        bucket_folder_path: str | None = None,
+        bucket_folder_path: str,
+        timeout: int = 300,
     ) -> UploadedFile:
         """
         Uploads a file to google bucket
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
+        :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
         :return: An UploadedFile object contains the uploaded file data
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
@@ -101,7 +103,7 @@ class GCS:
         filename = os.path.basename(file_path)
         blob = self.__bucket.blob(bucket_folder_path + filename)
         content_type = mimetypes.guess_type(filename)[0]
-        blob.upload_from_filename(filename=file_path, content_type=content_type)
+        blob.upload_from_filename(filename=file_path, content_type=content_type, timeout=timeout)
 
         return UploadedFile(
             file_disk_path=file_path,
@@ -109,9 +111,40 @@ class GCS:
             authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
         )
 
+    def get_file(
+        self,
+        file_path_in_bucket: str,
+    ) -> BucketFile | None:
+        """
+        Retrieves file information from a Google Cloud Storage bucket.
+        :param file_path_in_bucket: The file's full path inside the bucket, e.g., 'folder/file.txt'.
+        :return: A BucketFile object or None if the file does not exist.
+        :raises GCSBucketNotSelectedError: If no bucket is selected for the operation.
+        """
+        self.__check_bucket_is_selected()
+        blob = self.__bucket.get_blob(prefix=file_path_in_bucket)
+
+        if blob is None:
+            return blob
+
+        return BucketFile(
+            id=blob.id,
+            basename=os.path.basename(blob.name),
+            file_path_in_bucket=blob.name,
+            bucket_name=self.__bucket.name,
+            public_url=blob.public_url,
+            authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
+            size_bytes=blob.size,
+            creation_date=blob.time_created,
+            modification_date=blob.updated,
+            md5_hash=blob.md5_hash,
+            crc32c_checksum=blob.crc32c,
+            content_type=blob.content_type,
+        )
+
     def get_files(
         self,
-        folder_path_in_bucket: str | None = None,
+        folder_path_in_bucket: str,
     ) -> list[BucketFile]:
         """
         Lists all the blobs in the bucket.
