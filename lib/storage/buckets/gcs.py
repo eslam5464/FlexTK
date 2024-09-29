@@ -88,7 +88,7 @@ class GCS:
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
-        :return: An UploadedFile object contains the uploaded file data or None
+        :return: A BucketFile object contains the uploaded file data or None
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
