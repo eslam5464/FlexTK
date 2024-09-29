@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 from dataclasses import dataclass, field
@@ -13,6 +14,9 @@ from lib.schemas.google_bucket import (
     DownloadBucketFile,
     ServiceAccount,
 )
+from lib.utils.network import calculate_upload_time
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(init=False)
@@ -82,14 +86,17 @@ class GCS:
         file_path: str,
         bucket_folder_path: str,
         timeout: int = 300,
+        calculate_upload_estimation: bool = True,
     ) -> BucketFile | None:
         """
         Uploads a file to google bucket
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
+        :param calculate_upload_estimation: Flag to enable/disable upload time estimation. Defaults to True.
         :return: A BucketFile object contains the uploaded file data or None
         :raise GCSBucketNotSelectedError: No bucket is selected
+        :raise ValueError: If the file is not found at the specified path.
         """
         self.__check_bucket_is_selected()
 
@@ -99,9 +106,21 @@ class GCS:
         if not bucket_folder_path.endswith("/"):
             bucket_folder_path += "/"
 
+        if calculate_upload_estimation:
+            calculated_upload_time = calculate_upload_time(
+                file_size_mb=os.path.getsize(file_path),
+            )
+            logger.info(
+                f"Uploading {os.path.basename(file_path)} will "
+                f"take an estimated {calculated_upload_time:.2} seconds",
+            )
+
+            if calculated_upload_time > timeout:
+                timeout = int(calculated_upload_time)
+
         filename = os.path.basename(file_path)
         blob = self.__bucket.blob(bucket_folder_path + filename)
-        content_type = mimetypes.guess_type(filename)[0]
+        content_type, _ = mimetypes.guess_type(filename)
         blob.upload_from_filename(filename=file_path, content_type=content_type, timeout=timeout)
 
         return self.get_file(bucket_folder_path)
@@ -194,6 +213,7 @@ class GCS:
             "",
             content_type="application/x-www-form-urlencoded;charset=UTF-8",
         )
+        logger.info(f"Created folder {folder_name} in bucket {self.__bucket.name}")
 
         return self
 
@@ -211,6 +231,10 @@ class GCS:
         self.__check_bucket_is_selected()
 
         for file_entry in files_to_download:
+            logger.info(
+                msg=f"Downloading file {file_entry.bucket_path}",
+                extra={"download_location": file_entry.download_directory},
+            )
             blob = self.__bucket.blob(file_entry.bucket_path)
             destination_file_name = os.path.join(
                 file_entry.download_directory,
@@ -235,6 +259,9 @@ class GCS:
         for file_entry in list_of_files:
             blob = self.__bucket.blob(file_entry)
             blob.delete()
+            logger.info(
+                msg=f"Deleted file {file_entry} in bucket {self.__bucket.name}",
+            )
 
         return self
 
