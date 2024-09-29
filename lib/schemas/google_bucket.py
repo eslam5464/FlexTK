@@ -30,19 +30,13 @@ class DownloadBucketFile(BaseMetadata):
         return value
 
 
-class UploadedFile(BaseMetadata):
-    file_disk_path: str
-    authenticated_url: str
-    bucket_folder_path: HttpUrl
-
-
 class BucketFile(BaseMetadata):
     id: str
     basename: str
     file_path_in_bucket: str
     bucket_name: str
-    authenticated_url: str
-    public_url: str
+    authenticated_url: HttpUrl
+    public_url: HttpUrl
     size_bytes: int
     md5_hash: str
     crc32c_checksum: int

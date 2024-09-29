@@ -12,7 +12,6 @@ from lib.schemas.google_bucket import (
     BucketFolder,
     DownloadBucketFile,
     ServiceAccount,
-    UploadedFile,
 )
 
 
@@ -83,13 +82,13 @@ class GCS:
         file_path: str,
         bucket_folder_path: str,
         timeout: int = 300,
-    ) -> UploadedFile:
+    ) -> BucketFile | None:
         """
         Uploads a file to google bucket
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
-        :return: An UploadedFile object contains the uploaded file data
+        :return: An UploadedFile object contains the uploaded file data or None
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
@@ -105,11 +104,7 @@ class GCS:
         content_type = mimetypes.guess_type(filename)[0]
         blob.upload_from_filename(filename=file_path, content_type=content_type, timeout=timeout)
 
-        return UploadedFile(
-            file_disk_path=file_path,
-            bucket_folder_path=f"{self.__bucket.name}/{bucket_folder_path}",
-            authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
-        )
+        return self.get_file(bucket_folder_path)
 
     def get_file(
         self,
