@@ -114,7 +114,8 @@ class GCS:
             )
             calculated_upload_time = math.ceil(calculated_upload_time)
             logger.info(
-                f"Uploading {os.path.basename(file_path)} will " f"take an estimated {calculated_upload_time} seconds",
+                f"Uploading {os.path.basename(file_path)} will take "
+                + f"an estimated {calculated_upload_time} seconds",
             )
 
             if calculated_upload_time > timeout:
