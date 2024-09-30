@@ -1,4 +1,5 @@
 import logging
+import math
 import mimetypes
 import os
 from dataclasses import dataclass, field
@@ -14,7 +15,7 @@ from lib.schemas.google_bucket import (
     DownloadBucketFile,
     ServiceAccount,
 )
-from lib.utils.network import calculate_upload_time
+from lib.utils.network import get_upload_time
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class GCS:
         file_path: str,
         bucket_folder_path: str,
         timeout: int = 300,
-        calculate_upload_estimation: bool = True,
+        calculate_upload_estimation: bool = False,
     ) -> BucketFile | None:
         """
         Uploads a file to google bucket
@@ -107,8 +108,9 @@ class GCS:
             bucket_folder_path += "/"
 
         if calculate_upload_estimation:
-            calculated_upload_time = calculate_upload_time(
-                file_size_mb=os.path.getsize(file_path),
+            file_size = math.ceil(os.path.getsize(file_path) / (1024 * 1024))
+            calculated_upload_time = get_upload_time(
+                file_size_mb=file_size,
             )
             logger.info(
                 f"Uploading {os.path.basename(file_path)} will "
