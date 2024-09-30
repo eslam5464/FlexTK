@@ -94,7 +94,7 @@ class GCS:
         :param file_path: File path to upload to google bucket
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
-        :param calculate_upload_estimation: Flag to enable/disable upload time estimation. Defaults to True.
+        :param calculate_upload_estimation: Flag to enable/disable upload time estimation.
         :return: A BucketFile object contains the uploaded file data or None
         :raise GCSBucketNotSelectedError: No bucket is selected
         :raise ValueError: If the file is not found at the specified path.
@@ -112,9 +112,9 @@ class GCS:
             calculated_upload_time = get_upload_time(
                 file_size_mb=file_size,
             )
+            calculated_upload_time = math.ceil(calculated_upload_time)
             logger.info(
-                f"Uploading {os.path.basename(file_path)} will "
-                f"take an estimated {calculated_upload_time:.2} seconds",
+                f"Uploading {os.path.basename(file_path)} will " f"take an estimated {calculated_upload_time} seconds",
             )
 
             if calculated_upload_time > timeout:
