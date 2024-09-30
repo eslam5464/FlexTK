@@ -210,7 +210,7 @@ class GCS:
         if not folder_name.endswith("/"):
             folder_name += "/"
 
-        blob = self.__client.bucket(self.__bucket.name).blob(folder_name)
+        blob = self.__bucket.blob(folder_name)
         blob.upload_from_string(
             "",
             content_type="application/x-www-form-urlencoded;charset=UTF-8",
