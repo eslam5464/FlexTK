@@ -1,19 +1,25 @@
 import io
 import logging
 import mimetypes
+import os
 
 import google.auth
 from googleapiclient.discovery import Resource, build  # noqa
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from lib.exceptions import GoogleDriveError
-from lib.schemas.google_drive import GoogleDriveFolder, GoogleDriveServiceAccount
+from lib.schemas.google_drive import (
+    DriveFile,
+    DriveFileUpload,
+    DriveFolder,
+    DriveServiceAccount,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _get_gdrive_credentials(
-    service_account: GoogleDriveServiceAccount,
+    service_account: DriveServiceAccount,
 ):
     """
     Retrieves Google Drive API credentials using a service account.
@@ -78,8 +84,8 @@ def _set_permissions(
 
 def check_folder_exists(
     folder_name: str,
-    service_account: GoogleDriveServiceAccount,
-) -> list[GoogleDriveFolder]:
+    service_account: DriveServiceAccount,
+) -> list[DriveFolder]:
     """
     Checks if a folder with the specified name exists in Google Drive.
     :param folder_name: The name of the folder to check.
@@ -92,14 +98,14 @@ def check_folder_exists(
         query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
         results = service.files().list(q=query, spaces="drive", fields="files(id, name, parents)").execute()
         items = results.get("files", [])
-        drive_folders: list[GoogleDriveFolder] = []
+        drive_folders: list[DriveFolder] = []
 
         if not items:
             return []
 
         for item in items:
             drive_folders.append(
-                GoogleDriveFolder(
+                DriveFolder(
                     id=item["id"],
                     name=folder_name,
                     parent_ids=item["parents"],
@@ -115,19 +121,15 @@ def check_folder_exists(
         raise GoogleDriveError(error.reason)
 
 
-def upload_file_to_folder(
-    parent_folder_id: str,
-    filename: str,
-    file_path: str,
-    service_account: GoogleDriveServiceAccount,
-) -> str:
+def upload_files_to_folder(
+    files_to_upload: list[DriveFileUpload],
+    service_account: DriveServiceAccount,
+) -> list[DriveFile]:
     """
     Uploads an image file to a specified Google Drive folder. Load
     pre-authorized user credentials from the environment. For more
     information see https://developers.google.com/identity
-    :param parent_folder_id: The ID of the Google Drive parent folder where the file will be uploaded.
-    :param filename: The name of the file to be uploaded.
-    :param file_path: The path to the file to be uploaded.
+    :param files_to_upload: List of GoogleDriveFileUpload object that contains the details of the file.
     :param service_account: The service account credentials used for authorization.
     :return: The ID of the uploaded file if successful, otherwise None.
     :raises GoogleDriveError: If an error occurs during the file upload process.
@@ -135,18 +137,35 @@ def upload_file_to_folder(
     try:
         credentials = _get_gdrive_credentials(service_account)
         service = build(serviceName="drive", version="v3", credentials=credentials)
-        file_metadata = {"name": filename, "parents": [parent_folder_id]}
-        media = MediaFileUpload(filename=file_path, mimetype=mimetypes.guess_type(file_path)[0], resumable=True)
-        file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-        file_id = file.get("id")
+        uploaded_files: list[DriveFile] = []
 
-        _set_permissions(
-            file_id=file_id,
-            service=service,
-            view=True,
-        )
+        for file_entry in files_to_upload:
+            file_metadata = {"name": file_entry.filename_on_drive, "parents": [file_entry.parent_folder_id]}
+            file_mime_type, _ = mimetypes.guess_type(file_entry.file_path)
+            media = MediaFileUpload(filename=file_entry.file_path, mimetype=file_mime_type, resumable=True)
+            file_data = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+            file_id = file_data.get("id")
 
-        return file.get("id")
+            _set_permissions(
+                file_id=file_id,
+                service=service,
+                view=True,
+            )
+
+            logger.info(
+                msg=f"Uploaded file {os.path.basename(file_entry.file_path)} to google drive",
+                extra={"file_location": file_entry.file_path},
+            )
+
+            uploaded_files.append(
+                DriveFile(
+                    id=file_id,
+                    filename=file_entry.filename_on_drive,
+                    parent_folder_id=file_entry.parent_folder_id,
+                ),
+            )
+
+        return uploaded_files
 
     except HttpError as error:
         logger.error(msg=f"An error occurred: {error}", extra={"exception": error})
@@ -155,7 +174,7 @@ def upload_file_to_folder(
 
 def create_folder(
     folder_name: str,
-    service_account: GoogleDriveServiceAccount,
+    service_account: DriveServiceAccount,
     parent_folder_id: str | None = None,
 ) -> str:
     """
@@ -184,6 +203,7 @@ def create_folder(
             .execute()
         )
         file_id = file.get("id")
+        logger.info(f"Created folder {folder_name} in google drive with id {file_id}")
 
         _set_permissions(
             file_id=file_id,
@@ -192,7 +212,7 @@ def create_folder(
             write=True,
         )
 
-        return file.get("id")
+        return file_id
     except HttpError as error:
         logger.error(msg=f"An error occurred: {error.reason}", extra={"exception": error})
         raise GoogleDriveError(error.reason)
@@ -201,7 +221,7 @@ def create_folder(
 def download_file(
     file_id: str,
     save_path: str,
-    service_account: GoogleDriveServiceAccount,
+    service_account: DriveServiceAccount,
 ):
     """
     Downloads a file from Google Drive and saves it to the specified
@@ -237,7 +257,7 @@ def download_file(
 
 
 def delete_all_service_account_folders(
-    service_account: GoogleDriveServiceAccount,
+    service_account: DriveServiceAccount,
 ):
     """
     Deletes all folders owned by a specified Google Drive service account.
@@ -255,7 +275,7 @@ def delete_all_service_account_folders(
             logger.info(f"No folders found when deleting all service account folders")
             return []
 
-        deleted_folders: list[GoogleDriveFolder] = []
+        deleted_folders: list[DriveFolder] = []
 
         for folder in folders:
             folder_id = folder["id"]
@@ -265,7 +285,7 @@ def delete_all_service_account_folders(
                 service.files().delete(fileId=folder_id).execute()
                 logger.info(f"Deleted google drive folder {folder_name} with id {folder_id}")
                 deleted_folders.append(
-                    GoogleDriveFolder(id=folder_id, name=folder_name, parent_ids=folder["parents"]),
+                    DriveFolder(id=folder_id, name=folder_name, parent_ids=folder["parents"]),
                 )
             except HttpError as error:
                 logger.error(
