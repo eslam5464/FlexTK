@@ -1,6 +1,8 @@
 import http.client
 import time
 
+from lib.schemas.network import HTTPRequestMethod
+
 
 def get_upload_time(
     server: str = "httpbin.org",
@@ -43,11 +45,11 @@ def measure_upload_speed(
 ) -> float:
     """
     Measures upload speed to a given server by sending a 1 MB sample data and
-    calculating the speed in megabits per second (Mbps).
+    calculating the speed in megabytes per second (MBps).
     :param server: The domain name of the server to which data is uploaded.
     :param path: The path on the server where the POST request will be sent.
     :param port: The port for the HTTPS connection, default is 443.
-    :return: The upload speed in Mbps.
+    :return: The upload speed in MBps.
     """
     conn = http.client.HTTPSConnection(server, port)
     sample_data = b"x" * (1024 * 1024)
@@ -56,13 +58,13 @@ def measure_upload_speed(
     }
 
     start_time = time.time()
-    conn.request("POST", path, body=sample_data, headers=headers)
+    conn.request(method=HTTPRequestMethod.post, url=path, body=sample_data, headers=headers)
     response = conn.getresponse()
     response.read()
 
     end_time = time.time()
     elapsed_time = end_time - start_time
-    upload_speed_mbps = (8 * len(sample_data)) / (elapsed_time * 1024 * 1024)
+    upload_speed_mbps = len(sample_data) / (elapsed_time * 1024 * 1024)
     conn.close()
 
     return upload_speed_mbps
