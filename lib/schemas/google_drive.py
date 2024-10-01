@@ -5,13 +5,27 @@ from pydantic import field_validator
 from .base import BaseMetadata
 
 
-class DriveServiceAccount(BaseMetadata):
-    private_key: str
-    private_key_id: str
-    project_id: str
-    client_email: str
+class DriveWebData(BaseMetadata):
     client_id: str
-    client_x509_cert_url: str
+    project_id: str
+    auth_uri: str = "https://accounts.google.com/o/oauth2/auth"
+    token_uri: str = "https://oauth2.googleapis.com/token"
+    auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
+    client_secret: str
+
+
+class DriveCredentials(BaseMetadata):
+    """
+    - This schema represents the credentials obtained from the Google
+    Developer Console following the instructions outlined in the
+    Google Drive API Python quickstart guide:
+    https://developers.google.com/drive/api/quickstart/python
+    - You can check the available scopes from this guide:
+    https://developers.google.com/drive/api/guides/api-specific-auth
+    """
+
+    web: DriveWebData
+    scopes: list[str] | None = None
 
 
 class DriveFolder(BaseMetadata):
@@ -27,7 +41,7 @@ class DriveFileUpload(BaseMetadata):
 
     @field_validator("file_path")
     def validate_path(cls, value: str):
-        if os.path.isfile(value):
+        if not os.path.isfile(value):
             raise FileNotFoundError(f"File not found in {value}")
 
         return value
