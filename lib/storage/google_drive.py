@@ -30,10 +30,10 @@ class GoogleDrive:
     __credentials: Credentials | None = field(default=None)
     __drive_credentials: DriveCredentials | None = field(default=None)
 
-    def __init__(self, drive_credentials: DriveCredentials, token_path: Path | None = None):
+    def __init__(self, drive_credentials: DriveCredentials | str, token_path: Path | None = None):
         """
         Initializes a new instance of the GoogleDrive class, allowing interaction with the Google Drive API.
-        :param drive_credentials: An instance of DriveCredentials containing the necessary Google Drive credentials.
+        :param drive_credentials: An instance of DriveCredentials or the path for the credentials JSON path.
         :param token_path: Optional. A Path object specifying where the token file is stored on disk.
 
         This class utilizes the Google Drive API to perform operations such as file uploads,
@@ -46,6 +46,13 @@ class GoogleDrive:
             self.__token_path = token_path
         else:
             self.__token_path = Path.home() / ".config" / "my_google_drive" / "google_drive_token.json"
+
+        if isinstance(drive_credentials, str):
+            if not os.path.isfile(drive_credentials):
+                raise FileNotFoundError("Google drive JSON file not found")
+            if not drive_credentials.lower().endswith(".json"):
+                _, file_extension = os.path.splitext(drive_credentials.lower())
+                raise ValueError(f"Google Drive credentials is not a json file: {file_extension}")
 
         self.__drive_credentials = drive_credentials
         self.__credentials = self._get_gdrive_credentials()
@@ -352,11 +359,21 @@ class GoogleDrive:
                 credentials.refresh(Request())
             else:
                 logger.info(msg="Google drive is valid, creating the credentials from the token")
-                flow = InstalledAppFlow.from_client_config(
-                    client_config=self.__drive_credentials.model_dump(exclude={"scopes"}),
-                    scopes=scopes,
-                )
-                credentials = flow.run_local_server(port=0)
+
+                if isinstance(self.__drive_credentials, str):
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        client_secrets_file=self.__drive_credentials,
+                        scopes=scopes,
+                    )
+                elif isinstance(self.__drive_credentials, DriveCredentials):
+                    flow = InstalledAppFlow.from_client_config(
+                        client_config=self.__drive_credentials.model_dump(exclude={"scopes"}),
+                        scopes=scopes,
+                    )
+                else:
+                    raise GoogleDriveError(f"Unsupported type of credentials: {type(self.__drive_credentials)}")
+
+                credentials = flow.run_local_server(port=0, timeout_seconds=300)
 
             if not self.__token_path.exists():
                 self.__token_path.parent.mkdir()
