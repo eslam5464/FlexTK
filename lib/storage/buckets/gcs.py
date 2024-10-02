@@ -8,13 +8,14 @@ from typing import Self
 from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
-from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError
+from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError, GCSError
 from lib.schemas.google_bucket import (
     BucketFile,
     BucketFolder,
     DownloadBucketFile,
     ServiceAccount,
 )
+from lib.utils.files import calculate_md5_hash
 from lib.utils.network import estimate_upload_time
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ class GCS:
         bucket_folder_path: str,
         timeout: int = 300,
         calculate_upload_estimation: bool = False,
+        check_if_exists: bool = False,
     ) -> BucketFile | None:
         """
         Uploads a file to google bucket
@@ -95,6 +97,7 @@ class GCS:
         :param bucket_folder_path: Name of the folder inside the bucket to upload e.g. path/to/folder/in/bucket/
         :param timeout: The maximum time, in seconds, to wait for the upload to complete. Default is 300 seconds.
         :param calculate_upload_estimation: Flag to enable/disable upload time estimation.
+        :param check_if_exists: Flag to enable/disable check if file existence then disregard the upload.
         :return: A BucketFile object contains the uploaded file data or None
         :raise GCSBucketNotSelectedError: No bucket is selected
         :raise ValueError: If the file is not found at the specified path.
@@ -106,6 +109,25 @@ class GCS:
 
         if not bucket_folder_path.endswith("/"):
             bucket_folder_path += "/"
+
+        if check_if_exists:
+            current_file_md5_hash = calculate_md5_hash(file_path)
+            files_in_bucket_folder = self.get_files(bucket_folder_path)
+            bucket_files_in_folder = [
+                file_entry for file_entry in files_in_bucket_folder if file_entry.md5_hash == current_file_md5_hash
+            ]
+
+            if len(bucket_files_in_folder) == 0:
+                pass
+            elif len(bucket_files_in_folder) == 1:
+                logger.info(f"Skipping the already existing file in bucket {os.path.basename(file_path)}")
+                return bucket_files_in_folder[0]
+            else:
+                logger.error(
+                    msg=f"File {os.path.basename(file_path)} exist {len(bucket_files_in_folder)} times in bucket",
+                    extra={"file_location": file_path, "duplicate_files_in_bucket": bucket_files_in_folder},
+                )
+                raise GCSError(f"File {os.path.basename(file_path)} exists more than one time in bucket folder")
 
         if calculate_upload_estimation:
             file_size = math.ceil(os.path.getsize(file_path) / (1024 * 1024))
