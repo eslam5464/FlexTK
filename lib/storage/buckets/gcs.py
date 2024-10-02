@@ -15,7 +15,7 @@ from lib.schemas.google_bucket import (
     DownloadBucketFile,
     ServiceAccount,
 )
-from lib.utils.network import get_upload_time
+from lib.utils.network import estimate_upload_time
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class GCS:
 
         if calculate_upload_estimation:
             file_size = math.ceil(os.path.getsize(file_path) / (1024 * 1024))
-            calculated_upload_time = get_upload_time(
+            calculated_upload_time = estimate_upload_time(
                 file_size_mb=file_size,
             )
             calculated_upload_time = math.ceil(calculated_upload_time)
