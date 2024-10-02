@@ -31,6 +31,17 @@ class GoogleDrive:
     __drive_credentials: DriveCredentials | None = field(default=None)
 
     def __init__(self, drive_credentials: DriveCredentials, token_path: Path | None = None):
+        """
+        Initializes a new instance of the GoogleDrive class, allowing interaction with the Google Drive API.
+        :param drive_credentials: An instance of DriveCredentials containing the necessary Google Drive credentials.
+        :param token_path: Optional. A Path object specifying where the token file is stored on disk.
+
+        This class utilizes the Google Drive API to perform operations such as file uploads,
+        downloads, folder management, and more. It requires authentication via OAuth 2.0.
+        For more information about setting up and using the Google Drive API,
+        refer to the Google Drive API Quickstart documentation:
+        https://developers.google.com/drive/api/quickstart/python
+        """
         if token_path:
             self.__token_path = token_path
         else:
