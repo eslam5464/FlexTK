@@ -269,12 +269,12 @@ class GoogleDrive:
             logger.error(msg=f"An error occurred: {error.reason}", extra={"exception": error})
             raise GoogleDriveError(error.reason)
 
-    def download_file(
+    def download_files(
         self,
         files_data: list[DriveFileDownload],
     ) -> Self:
         """
-        Downloads a file from Google Drive and saves it to the specified
+        Download files from Google Drive and saves it to the specified
         path. For more information see https://developers.google.com/identity
         :param files_data: List of DriveFileDownload object contains files data.
         :return: The path where the file was saved.
@@ -282,18 +282,21 @@ class GoogleDrive:
         """
         try:
             for file_entry in files_data:
-                request = self.__service.files().get_media(fileId=file_entry.file_id)
+                current_file = self.get_file(file_entry.file_id)
+
+                request = self.__service.files().get_media(fileId=current_file.id)
                 file = io.BytesIO()
                 downloader = MediaIoBaseDownload(file, request)
                 download_finished = False
 
                 while download_finished is False:
                     status, download_finished = downloader.next_chunk()
-                    logger.info(msg=f"Downloading file with id {file_entry.file_id} at {int(status.progress() * 100)}%")
+                    logger.info(msg=f"Downloading file with id {current_file.id} at {status.progress() * 100:.2f}%")
 
                 file_bytes = file.getvalue()
+                file_full_path = os.path.join(file_entry.save_path, current_file.filename)
 
-                with open(file_entry.save_path, "wb") as outfile:
+                with open(file_full_path, "wb") as outfile:
                     outfile.write(file_bytes)
         except HttpError as error:
             logger.error(msg=f"An error occurred: {error}", extra={"exception": error})
@@ -343,7 +346,7 @@ class GoogleDrive:
         Retrieves Google Drive API credentials using a service account.
         :return: The credentials object that can be used to authenticate API requests.
         """
-        scopes = self.__drive_credentials.scopes
+        scopes = self.__drive_credentials.scopes if isinstance(self.__drive_credentials, DriveCredentials) else None
         credentials = None
 
         if scopes is None:

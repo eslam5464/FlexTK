@@ -56,8 +56,7 @@ class DriveFileDownload(BaseMetadata):
 
     @field_validator("save_path")
     def validate_path(cls, value: str):
-        file_root_path, _ = os.path.split(value)
-        if not os.path.isdir(file_root_path):
+        if not os.path.isdir(value):
             raise NotADirectoryError(f"No directory exists in {value}")
 
         return value
