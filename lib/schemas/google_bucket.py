@@ -41,6 +41,7 @@ class BucketFile(BaseMetadata):
     md5_hash: str
     crc32c_checksum: int
     content_type: str
+    metadata: str
     creation_date: datetime
     modification_date: datetime
 

@@ -14,6 +14,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from lib.exceptions import GoogleDriveError
 from lib.schemas.google_drive import (
+    DriveBlobPermissions,
     DriveCredentials,
     DriveFile,
     DriveFileDownload,
@@ -187,12 +188,14 @@ class GoogleDrive:
     def upload_files(
         self,
         files_to_upload: list[DriveFileUpload],
+        permissions: DriveBlobPermissions,
     ) -> list[DriveFile]:
         """
         Uploads an image file to a specified Google Drive folder. Load
         pre-authorized user credentials from the environment. For more
         information see https://developers.google.com/identity
         :param files_to_upload: List of GoogleDriveFileUpload object that contains the details of the file.
+        :param permissions: An instance of DriveBlobPermissions that defines the access control for the folder.
         :return: The ID of the uploaded file if successful, otherwise None.
         :raises GoogleDriveError: If an error occurs during the file upload process.
         """
@@ -208,7 +211,9 @@ class GoogleDrive:
 
                 self._set_permissions(
                     file_id=file_id,
-                    view=True,
+                    view=permissions.read,
+                    write=permissions.write,
+                    write_permission_email=permissions.writer_email,
                 )
 
                 logger.info(
@@ -225,6 +230,7 @@ class GoogleDrive:
     def create_folder(
         self,
         folder_name: str,
+        permissions: DriveBlobPermissions,
         parent_folder_id: str | None = None,
     ) -> DriveFolder:
         """
@@ -232,6 +238,7 @@ class GoogleDrive:
         information see https://developers.google.com/identity
         :param folder_name: The name of the folder to be created.
         :param parent_folder_id: The ID of the Google Drive parent folder where the file will be uploaded.
+        :param permissions: An instance of DriveBlobPermissions that defines the access control for the folder.
         :return: The ID of the newly created folder.
         :raises GoogleDriveError: If an error occurs while creating the folder.
         """
@@ -255,8 +262,9 @@ class GoogleDrive:
 
             self._set_permissions(
                 file_id=folder_id,
-                view=False,
-                write=False,
+                view=permissions.read,
+                write=permissions.write,
+                write_permission_email=permissions.writer_email,
             )
 
             return DriveFolder(

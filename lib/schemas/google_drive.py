@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-from pydantic import field_validator
+from pydantic import EmailStr, field_validator
 
 from .base import BaseMetadata
 
@@ -93,3 +93,9 @@ class DriveFile(BaseMetadata):
             return value
 
         return "." + value
+
+
+class DriveBlobPermissions(BaseMetadata):
+    read: bool = False
+    write: bool = False
+    writer_email: EmailStr | None = None

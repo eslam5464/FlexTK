@@ -179,6 +179,7 @@ class GCS:
             md5_hash=blob.md5_hash,
             crc32c_checksum=blob.crc32c,
             content_type=blob.content_type,
+            metadata=blob.metadata,
         )
 
     def get_files(
@@ -213,6 +214,7 @@ class GCS:
                 md5_hash=blob.md5_hash,
                 crc32c_checksum=blob.crc32c,
                 content_type=blob.content_type,
+                metadata=blob.metadata,
             )
             for blob in blobs
             if blob.name != folder_path_in_bucket
