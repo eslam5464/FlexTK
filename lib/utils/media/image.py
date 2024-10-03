@@ -130,7 +130,7 @@ def get_image_details_magick(image_path: str) -> ImageDetails:
     :return: An instance of the ImageDetails.
     :raises FileNotFoundError: If the image file does not exist.
     """
-    if not os.path.exists(image_path):
+    if not os.path.isfile(image_path):
         raise FileNotFoundError("Image does not exist")
 
     args = [
