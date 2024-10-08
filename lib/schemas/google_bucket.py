@@ -4,10 +4,10 @@ from datetime import datetime
 
 from pydantic import HttpUrl, field_validator
 
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class ServiceAccount(BaseMetadata):
+class ServiceAccount(BaseSchema):
     private_key: str
     private_key_id: str
     project_id: str
@@ -15,7 +15,7 @@ class ServiceAccount(BaseMetadata):
     client_id: str
 
 
-class DownloadBucketFile(BaseMetadata):
+class DownloadBucketFile(BaseSchema):
     bucket_path: str
     filename_on_disk: str
     download_directory: str
@@ -30,7 +30,7 @@ class DownloadBucketFile(BaseMetadata):
         return value
 
 
-class BucketFile(BaseMetadata):
+class BucketFile(BaseSchema):
     id: str
     basename: str
     file_path_in_bucket: str
@@ -58,6 +58,6 @@ class BucketFile(BaseMetadata):
         return int.from_bytes(decoded_bytes, byteorder="big")
 
 
-class BucketFolder(BaseMetadata):
+class BucketFolder(BaseSchema):
     name: str
     bucket_folder_path: str

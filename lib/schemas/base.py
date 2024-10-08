@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class BaseMetadata(BaseModel):
+class BaseSchema(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
         strict=True,

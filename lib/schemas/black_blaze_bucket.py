@@ -1,15 +1,15 @@
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class ApplicationData(BaseMetadata):
+class ApplicationData(BaseSchema):
     app_id: str
     app_key: str
 
 
-class FileDownloadLink(BaseMetadata):
+class FileDownloadLink(BaseSchema):
     download_url: str
     auth_token: str | None
 
 
-class UploadedFileInfo(BaseMetadata):
+class UploadedFileInfo(BaseSchema):
     scanned: bool

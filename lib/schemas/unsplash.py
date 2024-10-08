@@ -2,22 +2,22 @@ from datetime import datetime
 
 from pydantic import AnyHttpUrl, Field, field_validator
 
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class AppServiceAccount(BaseMetadata):
+class AppServiceAccount(BaseSchema):
     app_id: int
     access_key: str
     secret_key: str
 
 
-class UserProfileImage(BaseMetadata):
+class UserProfileImage(BaseSchema):
     small: AnyHttpUrl
     medium: AnyHttpUrl
     large: AnyHttpUrl
 
 
-class UserLinks(BaseMetadata):
+class UserLinks(BaseSchema):
     api_user: AnyHttpUrl = Field(alias="self")
     html: AnyHttpUrl
     api_user_photos: AnyHttpUrl = Field(alias="photos")
@@ -27,14 +27,14 @@ class UserLinks(BaseMetadata):
     api_user_followers: AnyHttpUrl = Field(alias="followers")
 
 
-class SocialData(BaseMetadata):
+class SocialData(BaseSchema):
     instagram_username: str | None
     portfolio_url: str | None
     twitter_username: str | None
     paypal_email: None
 
 
-class UserData(BaseMetadata):
+class UserData(BaseSchema):
     id: str
     updated_at: datetime
     username: str
@@ -69,14 +69,14 @@ class UserData(BaseMetadata):
             return None
 
 
-class ResultLinks(BaseMetadata):
+class ResultLinks(BaseSchema):
     api_image: AnyHttpUrl = Field(alias="self")
     html: AnyHttpUrl
     download: AnyHttpUrl
     api_download: AnyHttpUrl = Field(alias="download_location")
 
 
-class ResultUrl(BaseMetadata):
+class ResultUrl(BaseSchema):
     raw: AnyHttpUrl
     full: AnyHttpUrl
     regular: AnyHttpUrl
@@ -85,18 +85,18 @@ class ResultUrl(BaseMetadata):
     amazon_s3_small: AnyHttpUrl = Field(alias="small_s3")
 
 
-class SubmissionType(BaseMetadata):
+class SubmissionType(BaseSchema):
     status: str
     approved_on: str
 
 
-class TopicSubmissions(BaseMetadata):
+class TopicSubmissions(BaseSchema):
     wallpapers: SubmissionType | None = None
     animals: SubmissionType | None = None
     nature: SubmissionType | None = None
 
 
-class AlternativeSlugs(BaseMetadata):
+class AlternativeSlugs(BaseSchema):
     en: str
     es: str
     ja: str
@@ -107,25 +107,25 @@ class AlternativeSlugs(BaseMetadata):
     pt: str
 
 
-class CoverPhotoBreadcrumb(BaseMetadata):
+class CoverPhotoBreadcrumb(BaseSchema):
     slug: str
     title: str
     index: int
     type: str
 
 
-class AncestryMetadata(BaseMetadata):
+class AncestrySchema(BaseSchema):
     slug: str
     pretty_slug: str
 
 
-class SourceAncestry(BaseMetadata):
-    type: AncestryMetadata = Field(alias="type")
-    category: AncestryMetadata
-    subcategory: AncestryMetadata | None = None
+class SourceAncestry(BaseSchema):
+    type: AncestrySchema = Field(alias="type")
+    category: AncestrySchema
+    subcategory: AncestrySchema | None = None
 
 
-class TagSource(BaseMetadata):
+class TagSource(BaseSchema):
     ancestry: SourceAncestry
     title: str
     subtitle: str
@@ -135,13 +135,13 @@ class TagSource(BaseMetadata):
     cover_photo: "ImageResult"
 
 
-class ResultTag(BaseMetadata):
+class ResultTag(BaseSchema):
     type: str
     title: str
     source_data: TagSource | None = Field(default=None, alias="source")
 
 
-class ImageResult(BaseMetadata):
+class ImageResult(BaseSchema):
     id: str
     slug: str
     alternative_slugs: AlternativeSlugs
@@ -179,7 +179,7 @@ class ImageResult(BaseMetadata):
         return None
 
 
-class UnsplashResponse(BaseMetadata):
+class UnsplashResponse(BaseSchema):
     total: int
     total_pages: int
     results: list[ImageResult]

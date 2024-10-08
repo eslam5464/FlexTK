@@ -1,7 +1,7 @@
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class VideoDetails(BaseMetadata):
+class VideoDetails(BaseSchema):
     frames_count: float
     duration_seconds: float
     frames_per_second: float
@@ -10,7 +10,7 @@ class VideoDetails(BaseMetadata):
     bit_rate: float
 
 
-class AudioDetails(BaseMetadata):
+class AudioDetails(BaseSchema):
     filename: str
     duration_seconds: float | None
     bit_rate_kb: int | None
@@ -19,7 +19,7 @@ class AudioDetails(BaseMetadata):
     sound_type: str | None
 
 
-class ImageDetails(BaseMetadata):
+class ImageDetails(BaseSchema):
     filename: str
     format_type: str
     mime_type: str

@@ -1,8 +1,8 @@
 import pandas as pd
 
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class ExcelDataframeSheet(BaseMetadata):
+class ExcelDataframeSheet(BaseSchema):
     sheet_name: str
     dataframe: pd.DataFrame

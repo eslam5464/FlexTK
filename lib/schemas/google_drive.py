@@ -4,10 +4,10 @@ from typing import Any
 
 from pydantic import EmailStr, field_validator
 
-from .base import BaseMetadata
+from .base import BaseSchema
 
 
-class DriveWebData(BaseMetadata):
+class DriveWebData(BaseSchema):
     client_id: str
     project_id: str
     auth_uri: str = "https://accounts.google.com/o/oauth2/auth"
@@ -16,7 +16,7 @@ class DriveWebData(BaseMetadata):
     client_secret: str
 
 
-class DriveCredentials(BaseMetadata):
+class DriveCredentials(BaseSchema):
     """
     - This schema represents the credentials obtained from the Google
     Developer Console following the instructions outlined in the
@@ -30,14 +30,14 @@ class DriveCredentials(BaseMetadata):
     scopes: list[str] | None = None
 
 
-class DriveFolder(BaseMetadata):
+class DriveFolder(BaseSchema):
     id: str
     name: str
     parent_ids: list[str]
     in_trash: bool
 
 
-class DriveFileUpload(BaseMetadata):
+class DriveFileUpload(BaseSchema):
     parent_folder_id: str
     filename_on_drive: str
     file_path: str
@@ -50,7 +50,7 @@ class DriveFileUpload(BaseMetadata):
         return value
 
 
-class DriveFileDownload(BaseMetadata):
+class DriveFileDownload(BaseSchema):
     file_id: str
     save_path: str
 
@@ -62,7 +62,7 @@ class DriveFileDownload(BaseMetadata):
         return value
 
 
-class DriveFile(BaseMetadata):
+class DriveFile(BaseSchema):
     id: str
     filename: str
     original_filename: str | None
@@ -95,7 +95,7 @@ class DriveFile(BaseMetadata):
         return "." + value
 
 
-class DriveBlobPermissions(BaseMetadata):
+class DriveBlobPermissions(BaseSchema):
     read: bool = False
     write: bool = False
     writer_email: EmailStr | None = None
