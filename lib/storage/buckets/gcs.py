@@ -12,7 +12,9 @@ from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError, GC
 from lib.schemas.google_bucket import (
     BucketFile,
     BucketFolder,
+    CopyBlob,
     DownloadBucketFile,
+    MoveBlob,
     ServiceAccount,
 )
 from lib.utils.files import calculate_md5_hash
@@ -150,6 +152,76 @@ class GCS:
 
         return self.get_file(bucket_folder_path)
 
+    def move_file(
+        self,
+        file_bucket_path: str,
+        destination_data: MoveBlob,
+    ) -> BucketFile | None:
+        """
+        Moves a file from the current bucket to another bucket or folder within the same bucket.
+        :param file_bucket_path: Path of the file to move in the source bucket.
+        :param destination_data: An instance of MoveBlob containing destination bucket and folder details.
+        :return: A BucketFile object or None if the file does not exist.
+        """
+        source_blob = self.__bucket.blob(file_bucket_path)
+        destination_bucket = self.__bucket
+
+        if destination_data.bucket_name:
+            destination_bucket = self.__client.get_bucket(destination_data.bucket_name)
+
+        blob_copy = self.__bucket.copy_blob(
+            source_blob,
+            destination_bucket,
+            destination_data.bucket_folder_path,
+            if_generation_match=destination_data.destination_generation_match_precondition,
+        )
+        if not blob_copy:
+            logger.error(f"Failed to move {file_bucket_path}")
+            raise GCSError(f"Failed to move {file_bucket_path}")
+
+        self.__bucket.delete_blob(file_bucket_path)
+        logger.info(
+            f"Moved {os.path.basename(blob_copy.name)} "
+            f"from {file_bucket_path} to {destination_data.bucket_folder_path}",
+        )
+
+        return self.get_file(destination_data.bucket_folder_path)
+
+    def copy_file(
+        self,
+        file_bucket_path: str,
+        destination_data: CopyBlob | None = None,
+    ) -> BucketFile | None:
+        """
+        Copies a file to a destination bucket or folder, optionally renaming it.
+        :param file_bucket_path: Path of the file to copy in the source bucket.
+        :param destination_data: Optional instance of CopyBlob containing destination bucket and folder details.
+        :return: A BucketFile object or None if the file does not exist.
+        """
+        source_blob = self.__bucket.blob(file_bucket_path)
+        destination_bucket = self.__bucket
+
+        if destination_data:
+            destination_bucket = self.__client.get_bucket(destination_data.bucket_name)
+
+        blob_copy = self.__bucket.copy_blob(
+            blob=source_blob,
+            destination_bucket=destination_bucket,
+            new_name=file_bucket_path,
+            if_generation_match=destination_data.if_generation_match,
+        )
+
+        if not blob_copy:
+            logger.error(f"Failed to copy {file_bucket_path}")
+            raise GCSError(f"Failed to copy {file_bucket_path}")
+
+        logger.info(
+            f"Copied {os.path.basename(blob_copy.name)} "
+            f"from {file_bucket_path} to {destination_data.bucket_folder_path}",
+        )
+
+        return self.get_file(destination_data.bucket_folder_path)
+
     def get_file(
         self,
         file_path_in_bucket: str,
@@ -169,6 +241,7 @@ class GCS:
         return BucketFile(
             id=blob.id,
             basename=os.path.basename(blob.name),
+            extension=os.path.splitext(blob.name)[1],
             file_path_in_bucket=blob.name,
             bucket_name=self.__bucket.name,
             public_url=blob.public_url,
@@ -203,7 +276,8 @@ class GCS:
         return [
             BucketFile(
                 id=blob.id,
-                basename=blob.name.replace(folder_path_in_bucket, ""),
+                basename=os.path.basename(blob.name),
+                extension=os.path.splitext(blob.name)[1],
                 file_path_in_bucket=blob.name,
                 bucket_name=self.__bucket.name,
                 public_url=blob.public_url,

@@ -33,6 +33,7 @@ class DownloadBucketFile(BaseSchema):
 class BucketFile(BaseSchema):
     id: str
     basename: str
+    extension: str
     file_path_in_bucket: str
     bucket_name: str
     authenticated_url: HttpUrl
@@ -41,7 +42,7 @@ class BucketFile(BaseSchema):
     md5_hash: str
     crc32c_checksum: int
     content_type: str
-    metadata: str
+    metadata: dict
     creation_date: datetime
     modification_date: datetime
 
@@ -61,3 +62,15 @@ class BucketFile(BaseSchema):
 class BucketFolder(BaseSchema):
     name: str
     bucket_folder_path: str
+
+
+class CopyBlob(BaseSchema):
+    bucket_name: str | None
+    bucket_folder_path: str
+    if_generation_match: int = 0
+
+
+class MoveBlob(BaseSchema):
+    bucket_name: str | None
+    bucket_folder_path: str
+    destination_generation_match_precondition: int = 0
