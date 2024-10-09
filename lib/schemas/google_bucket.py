@@ -65,12 +65,12 @@ class BucketFolder(BaseSchema):
 
 
 class CopyBlob(BaseSchema):
-    bucket_name: str | None
+    bucket_name: str | None = None
     bucket_folder_path: str
     if_generation_match: int = 0
 
 
 class MoveBlob(BaseSchema):
-    bucket_name: str | None
+    bucket_name: str | None = None
     bucket_folder_path: str
     destination_generation_match_precondition: int = 0

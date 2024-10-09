@@ -2,8 +2,9 @@ import logging
 import math
 import mimetypes
 import os
+from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Self
+from typing import Any, Self
 
 from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
@@ -156,12 +157,12 @@ class GCS:
         self,
         file_bucket_path: str,
         destination_data: MoveBlob,
-    ) -> BucketFile | None:
+    ) -> Self:
         """
         Moves a file from the current bucket to another bucket or folder within the same bucket.
         :param file_bucket_path: Path of the file to move in the source bucket.
         :param destination_data: An instance of MoveBlob containing destination bucket and folder details.
-        :return: A BucketFile object or None if the file does not exist.
+        :return: The GCS instance.
         """
         source_blob = self.__bucket.blob(file_bucket_path)
         destination_bucket = self.__bucket
@@ -170,9 +171,9 @@ class GCS:
             destination_bucket = self.__client.get_bucket(destination_data.bucket_name)
 
         blob_copy = self.__bucket.copy_blob(
-            source_blob,
-            destination_bucket,
-            destination_data.bucket_folder_path,
+            blob=source_blob,
+            destination_bucket=destination_bucket,
+            new_name=destination_data.bucket_folder_path,
             if_generation_match=destination_data.destination_generation_match_precondition,
         )
         if not blob_copy:
@@ -185,29 +186,29 @@ class GCS:
             f"from {file_bucket_path} to {destination_data.bucket_folder_path}",
         )
 
-        return self.get_file(destination_data.bucket_folder_path)
+        return self
 
     def copy_file(
         self,
         file_bucket_path: str,
-        destination_data: CopyBlob | None = None,
-    ) -> BucketFile | None:
+        destination_data: CopyBlob,
+    ) -> Self:
         """
         Copies a file to a destination bucket or folder, optionally renaming it.
         :param file_bucket_path: Path of the file to copy in the source bucket.
-        :param destination_data: Optional instance of CopyBlob containing destination bucket and folder details.
-        :return: A BucketFile object or None if the file does not exist.
+        :param destination_data: Instance of CopyBlob containing destination bucket and folder details.
+        :return: The GCS instance.
         """
         source_blob = self.__bucket.blob(file_bucket_path)
         destination_bucket = self.__bucket
 
-        if destination_data:
+        if destination_data.bucket_name:
             destination_bucket = self.__client.get_bucket(destination_data.bucket_name)
 
         blob_copy = self.__bucket.copy_blob(
             blob=source_blob,
             destination_bucket=destination_bucket,
-            new_name=file_bucket_path,
+            new_name=destination_data.bucket_folder_path,
             if_generation_match=destination_data.if_generation_match,
         )
 
@@ -220,20 +221,20 @@ class GCS:
             f"from {file_bucket_path} to {destination_data.bucket_folder_path}",
         )
 
-        return self.get_file(destination_data.bucket_folder_path)
+        return self
 
     def get_file(
         self,
         file_path_in_bucket: str,
     ) -> BucketFile | None:
         """
-        Retrieves file information from a Google Cloud Storage bucket.
+        Retrieves blob information from a Google Cloud Storage bucket.
         :param file_path_in_bucket: The file's full path inside the bucket, e.g., 'folder/file.txt'.
         :return: A BucketFile object or None if the file does not exist.
         :raises GCSBucketNotSelectedError: If no bucket is selected for the operation.
         """
         self.__check_bucket_is_selected()
-        blob = self.__bucket.get_blob(prefix=file_path_in_bucket)
+        blob = self.__bucket.get_blob(file_path_in_bucket)
 
         if blob is None:
             return blob
@@ -258,9 +259,9 @@ class GCS:
     def get_files(
         self,
         folder_path_in_bucket: str,
-    ) -> list[BucketFile]:
+    ) -> Generator[BucketFile, Any, None]:
         """
-        Lists all the blobs in the bucket.
+        Lists all the blobs in the specified path for the bucket.
         :param folder_path_in_bucket: Name of the folder inside the bucket e.g. path/to/folder/in/bucket/
         :return: List of BucketFile contain the files details
         :raise GCSBucketNotSelectedError: No bucket is selected
@@ -273,26 +274,24 @@ class GCS:
         blobs = self.__bucket.list_blobs(prefix=folder_path_in_bucket)
         folder_path_in_bucket = "" if not folder_path_in_bucket else folder_path_in_bucket
 
-        return [
-            BucketFile(
-                id=blob.id,
-                basename=os.path.basename(blob.name),
-                extension=os.path.splitext(blob.name)[1],
-                file_path_in_bucket=blob.name,
-                bucket_name=self.__bucket.name,
-                public_url=blob.public_url,
-                authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
-                size_bytes=blob.size,
-                creation_date=blob.time_created,
-                modification_date=blob.updated,
-                md5_hash=blob.md5_hash,
-                crc32c_checksum=blob.crc32c,
-                content_type=blob.content_type,
-                metadata=blob.metadata,
-            )
-            for blob in blobs
-            if blob.name != folder_path_in_bucket
-        ]
+        for blob in blobs:
+            if blob.name != folder_path_in_bucket:
+                yield BucketFile(
+                    id=blob.id,
+                    basename=os.path.basename(blob.name),
+                    extension=os.path.splitext(blob.name)[1],
+                    file_path_in_bucket=blob.name,
+                    bucket_name=self.__bucket.name,
+                    public_url=blob.public_url,
+                    authenticated_url=blob.public_url.replace("googleapis", "cloud.google"),
+                    size_bytes=blob.size,
+                    creation_date=blob.time_created,
+                    modification_date=blob.updated,
+                    md5_hash=blob.md5_hash,
+                    crc32c_checksum=blob.crc32c,
+                    content_type=blob.content_type,
+                    metadata=blob.metadata,
+                )
 
     def create_folder(
         self,
