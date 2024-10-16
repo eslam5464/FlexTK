@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 from enum import StrEnum
@@ -5,6 +6,8 @@ from enum import StrEnum
 import cv2
 from lib.schemas.media import VideoDetails
 from lib.utils.misc import convert_seconds_to_time_format
+
+logger = logging.getLogger(__name__)
 
 
 class SupportedVideoFormat(StrEnum):
@@ -127,7 +130,7 @@ def trim_video_ffmpeg(
     args = [
         "ffmpeg",
         "-i",
-        f"'{video_input_path}'",
+        video_input_path,
         "-ss",
         f"{start_time}",
         "-to",
@@ -138,10 +141,27 @@ def trim_video_ffmpeg(
         "copy",
         "-threads",
         "0",
-        f"'{video_output_path}'",
+        video_output_path,
         "-y",
     ]
-    subprocess.run(args=args, check=True)
+
+    result = subprocess.run(
+        args=args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.error(
+            msg=f"Ffmpeg failed with error code {result.returncode}",
+            extra={
+                "ffmpeg_return_code": result.returncode,
+                "ffmpeg_error": result.stderr,
+                "ffmpeg_out": result.stdout,
+            },
+        )
+        raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
 
 
 def cut_video_ffmpeg(
@@ -186,7 +206,7 @@ def cut_video_ffmpeg(
     args = [
         "ffmpeg",
         "-i",
-        f"'{video_input_path}'",
+        video_input_path,
         "-ss",
         f"{start_time}",
         "-t",
@@ -197,7 +217,23 @@ def cut_video_ffmpeg(
         "copy",
         "-threads",
         "0",
-        f"'{video_output_path}'",
+        video_output_path,
         "-y",
     ]
-    subprocess.run(args=args, check=True)
+    result = subprocess.run(
+        args=args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.error(
+            msg=f"Ffmpeg failed with error code {result.returncode}",
+            extra={
+                "ffmpeg_return_code": result.returncode,
+                "ffmpeg_error": result.stderr,
+                "ffmpeg_out": result.stdout,
+            },
+        )
+        raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
