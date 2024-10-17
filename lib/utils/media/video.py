@@ -88,6 +88,60 @@ def extract_all_frames_open_cv(
     video.release()
 
 
+def _validate_path_and_extensions(
+    video_input_path: str,
+    video_output_path: str,
+) -> None:
+    """
+    Validates the existence of input and output paths, as well as their file extensions.
+    :param video_input_path: Path to the input video file.
+    :param video_output_path: Path to the output video file.
+    :raises FileNotFoundError: If the input video file does not exist.
+    :raises NotADirectoryError: If the directory for the output path does not exist.
+    :raises ValueError: If the input or output file has an unsupported video format.
+    """
+    output_path_only, _ = os.path.split(video_output_path)
+    _, video_input_extension = os.path.splitext(video_input_path)
+    _, video_output_extension = os.path.splitext(video_output_path)
+    supported_video_format: list[str] = [e.value for e in SupportedVideoFormat]
+
+    if not os.path.exists(video_input_path):
+        raise FileExistsError("Input video does not exist")
+
+    if not os.path.isdir(output_path_only):
+        raise NotADirectoryError("Output path does not exist")
+
+    if video_input_extension not in supported_video_format:
+        raise ValueError(
+            f"Video extension for input is not supported, the supported extensions are {', '.join(supported_video_format)}",
+        )
+
+    if video_output_extension not in supported_video_format:
+        raise ValueError(
+            f"Video extension for output is not supported, the supported extensions are {', '.join(supported_video_format)}",
+        )
+
+
+def _run_ffmpeg_command(args: list[str]) -> None:
+    """
+    Executes the ffmpeg command and handles errors.
+    :param args: List of ffmpeg command arguments.
+    :raises RuntimeError: If ffmpeg fails during the operation.
+    """
+    result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    if result.returncode != 0:
+        logger.error(
+            f"Ffmpeg failed with error code {result.returncode}",
+            extra={
+                "ffmpeg_return_code": result.returncode,
+                "ffmpeg_error": result.stderr,
+                "ffmpeg_output": result.stdout,
+            },
+        )
+        raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
+
+
 def trim_video_ffmpeg(
     video_input_path: str,
     video_output_path: str,
@@ -100,32 +154,17 @@ def trim_video_ffmpeg(
     :param video_output_path: Path to save the trimmed video file.
     :param start_seconds: Start time in seconds from which to begin the trim.
     :param end_seconds: End time in seconds at which to end the trim.
-    :raises FileExistsError: If the input video file does not exist.
-    :raises NotADirectoryError: If the output directory does not exist.
-    :raises ValueError: If the input or output video extension is not supported.
+    :raises RuntimeError: If ffmpeg fails during the operation.
+    :raises FileNotFoundError: If the input video file does not exist.
+    :raises NotADirectoryError: If the directory for the output path does not exist.
+    :raises ValueError: If the input or output file has an unsupported video format.
     """
-    output_path_only, _ = os.path.split(video_output_path)
-    _, video_input_extension = os.path.splitext(video_input_path)
-    _, video_output_extension = os.path.splitext(video_output_path)
-    supported_video_format: list[str] = [e.value for e in SupportedVideoFormat]
+    _validate_path_and_extensions(
+        video_input_path=video_input_path,
+        video_output_path=video_output_path,
+    )
     start_time = convert_seconds_to_time_format(start_seconds).split(".")[0]
     end_time = convert_seconds_to_time_format(end_seconds).split(".")[0]
-
-    if not os.path.exists(video_input_path):
-        raise FileExistsError("Input video does not exist")
-
-    if not os.path.isdir(output_path_only):
-        raise NotADirectoryError("Output path does not exist")
-
-    if video_input_extension not in supported_video_format:
-        raise ValueError(
-            f"Video extension is not supported, the supported extensions are {', '.join(supported_video_format)}",
-        )
-
-    if video_output_extension not in supported_video_format:
-        raise ValueError(
-            f"Video extension is not supported, the supported extensions are {', '.join(supported_video_format)}",
-        )
 
     args = [
         "ffmpeg",
@@ -145,23 +184,7 @@ def trim_video_ffmpeg(
         "-y",
     ]
 
-    result = subprocess.run(
-        args=args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-
-    if result.returncode != 0:
-        logger.error(
-            msg=f"Ffmpeg failed with error code {result.returncode}",
-            extra={
-                "ffmpeg_return_code": result.returncode,
-                "ffmpeg_error": result.stderr,
-                "ffmpeg_out": result.stdout,
-            },
-        )
-        raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
+    _run_ffmpeg_command(args)
 
 
 def cut_video_ffmpeg(
@@ -176,32 +199,17 @@ def cut_video_ffmpeg(
     :param video_output_path: Path to save the trimmed video file.
     :param start_seconds: Start time in seconds from which to begin the trim.
     :param duration_seconds: Duration in seconds for which to trim the video.
-    :raises FileExistsError: If the input video file does not exist.
-    :raises NotADirectoryError: If the output directory does not exist.
-    :raises ValueError: If the input or output video extension is not supported.
+    :raises RuntimeError: If ffmpeg fails during the operation.
+    :raises FileNotFoundError: If the input video file does not exist.
+    :raises NotADirectoryError: If the directory for the output path does not exist.
+    :raises ValueError: If the input or output file has an unsupported video format.
     """
-    output_path_only, _ = os.path.split(video_output_path)
-    _, video_input_extension = os.path.splitext(video_input_path)
-    _, video_output_extension = os.path.splitext(video_output_path)
-    supported_video_format: list[str] = [e.value for e in SupportedVideoFormat]
+    _validate_path_and_extensions(
+        video_input_path=video_input_path,
+        video_output_path=video_output_path,
+    )
     start_time = convert_seconds_to_time_format(start_seconds).split(".")[0]
     duration_time = convert_seconds_to_time_format(duration_seconds).split(".")[0]
-
-    if not os.path.exists(video_input_path):
-        raise FileExistsError("Input video does not exist")
-
-    if not os.path.isdir(output_path_only):
-        raise NotADirectoryError("Output path does not exist")
-
-    if video_input_extension not in supported_video_format:
-        raise ValueError(
-            f"Video extension is not supported, the supported extensions are {', '.join(supported_video_format)}",
-        )
-
-    if video_output_extension not in supported_video_format:
-        raise ValueError(
-            f"Video extension is not supported, the supported extensions are {', '.join(supported_video_format)}",
-        )
 
     args = [
         "ffmpeg",
@@ -220,20 +228,5 @@ def cut_video_ffmpeg(
         video_output_path,
         "-y",
     ]
-    result = subprocess.run(
-        args=args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
 
-    if result.returncode != 0:
-        logger.error(
-            msg=f"Ffmpeg failed with error code {result.returncode}",
-            extra={
-                "ffmpeg_return_code": result.returncode,
-                "ffmpeg_error": result.stderr,
-                "ffmpeg_out": result.stdout,
-            },
-        )
-        raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
+    _run_ffmpeg_command(args)
