@@ -236,8 +236,8 @@ class GCS:
         self.__check_bucket_is_selected()
         blob = self.__bucket.get_blob(file_path_in_bucket)
 
-        if blob is None:
-            return blob
+        if blob is None or blob.name.endswith("/"):
+            return None
 
         return BucketFile(
             id=blob.id,
@@ -275,6 +275,9 @@ class GCS:
         folder_path_in_bucket = "" if not folder_path_in_bucket else folder_path_in_bucket
 
         for blob in blobs:
+            if blob.name.endswith("/"):
+                continue
+
             if blob.name != folder_path_in_bucket:
                 yield BucketFile(
                     id=blob.id,
@@ -339,6 +342,15 @@ class GCS:
             destination_file_name = os.path.join(
                 file_entry.download_directory,
                 file_entry.filename_on_disk,
+            )
+            file_basename = os.path.basename(file_entry.bucket_path)
+            logger.debug(
+                msg=f"Downloading {file_basename} from bucket",
+                extra={
+                    "bucket_path": file_entry.bucket_path,
+                    "bucket_name": self.__bucket.name,
+                    "download_path": destination_file_name,
+                },
             )
             blob.download_to_filename(destination_file_name)
 
