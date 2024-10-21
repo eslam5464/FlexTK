@@ -3,8 +3,10 @@ import os
 import re
 import subprocess
 from enum import StrEnum
+from pathlib import Path
 
 from lib.schemas.media import AudioDetails
+from lib.utils.files import create_temp_file
 from lib.utils.misc import (
     convert_seconds_to_time_format,
     convert_time_format_to_seconds,
@@ -19,6 +21,7 @@ class SupportedAudioFormat(StrEnum):
     ogg = ".ogg"
     flac = ".flac"
     wav = ".wav"
+    m4a = ".m4a"
 
 
 @check_ffmpeg
@@ -126,6 +129,7 @@ def _run_ffmpeg_command(args: list[str]) -> None:
         raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
 
 
+@check_ffmpeg
 def trim_audio_ffmpeg(
     audio_input_path: str,
     audio_output_path: str,
@@ -171,6 +175,7 @@ def trim_audio_ffmpeg(
     _run_ffmpeg_command(args)
 
 
+@check_ffmpeg
 def cut_audio_ffmpeg(
     audio_input_path: str,
     audio_output_path: str,
@@ -213,3 +218,78 @@ def cut_audio_ffmpeg(
         "-y",
     ]
     _run_ffmpeg_command(args)
+
+
+@check_ffmpeg
+def join_audio_ffmpeg(
+    files_to_join: list[str],
+    joined_audio_path: str,
+) -> None:
+    """
+    Joins multiple audio files into one using ffmpeg.
+    :param files_to_join: List of audio files to join.
+    :param joined_audio_path: Path for the output joined audio file.
+    :raises FileNotFoundError: If any input file does not exist.
+    :raises ValueError: If any audio extension is unsupported or 'files_to_join' is less than 2.
+    :raises NotADirectoryError: If the parent directory of the output file does not exist.
+    """
+    audio_path = Path(joined_audio_path)
+    parent_folder = Path(audio_path).parent
+    supported_audio_format: list[str] = [e.value for e in SupportedAudioFormat]
+    temp_file_data = ""
+
+    if not parent_folder.is_dir():
+        raise NotADirectoryError("Output parent path for joined audio does not exist")
+
+    if len(files_to_join) < 2:
+        raise ValueError("There must be 2 or more audio files to join")
+
+    for file_entry in files_to_join:
+        file_entry_path = Path(file_entry)
+
+        if not file_entry_path.is_file():
+            raise FileNotFoundError(f"Audio file not found in {str(file_entry_path)}")
+
+        if file_entry_path.suffix not in supported_audio_format:
+            raise ValueError(
+                f"Audio extension {file_entry_path.suffix} for files to join is not supported, "
+                f"the supported extensions are {', '.join(supported_audio_format)}",
+            )
+
+        temp_file_data += f"file '{file_entry}'\n"
+
+    if audio_path.suffix not in supported_audio_format:
+        raise ValueError(
+            f"Audio extension {audio_path.suffix} for input is not supported, "
+            f"the supported extensions are {', '.join(supported_audio_format)}",
+        )
+
+    temp_text_file_path = create_temp_file(
+        file_bytes=temp_file_data.encode(),
+        file_extension=".txt",
+    )
+
+    args = [
+        "ffmpeg",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        temp_text_file_path,
+        "-map",
+        "0:a",
+        "-c",
+        "copy",
+        joined_audio_path,
+        "-y",
+    ]
+
+    try:
+        _run_ffmpeg_command(args)
+        logger.info(
+            msg=f"Audio Joined and saved at: {joined_audio_path}",
+            extra={"files_joined": f"<{'> <'.join(files_to_join)}'>"},
+        )
+    finally:
+        os.remove(temp_text_file_path)

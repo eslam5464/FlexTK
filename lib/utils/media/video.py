@@ -6,6 +6,7 @@ from enum import StrEnum
 import cv2
 from lib.schemas.media import VideoDetails
 from lib.utils.misc import convert_seconds_to_time_format
+from lib.wrappers.installed_apps import check_ffmpeg
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,7 @@ def _run_ffmpeg_command(args: list[str]) -> None:
         raise RuntimeError(f"Ffmpeg failed with error code: {result.returncode}")
 
 
+@check_ffmpeg
 def trim_video_ffmpeg(
     video_input_path: str,
     video_output_path: str,
@@ -187,6 +189,7 @@ def trim_video_ffmpeg(
     _run_ffmpeg_command(args)
 
 
+@check_ffmpeg
 def cut_video_ffmpeg(
     video_input_path: str,
     video_output_path: str,
