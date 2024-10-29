@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Self
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build  # noqa
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-from lib.exceptions import GoogleDriveError
+from lib.exceptions import GCSError, GoogleDriveError
 from lib.schemas.google_drive import (
     DriveBlobPermissions,
     DriveCredentials,
@@ -31,7 +32,12 @@ class GoogleDrive:
     __credentials: Credentials | None = field(default=None)
     __drive_credentials: DriveCredentials | None = field(default=None)
 
-    def __init__(self, drive_credentials: DriveCredentials | str, token_path: Path | None = None):
+    def __init__(
+        self,
+        drive_credentials: DriveCredentials | str,
+        token_path: Path | None = None,
+        retrieve_new_token: bool = False,
+    ):
         """
         Initializes a new instance of the GoogleDrive class, allowing interaction with the Google Drive API.
         :param drive_credentials: An instance of DriveCredentials or the path for the credentials JSON path.
@@ -44,9 +50,12 @@ class GoogleDrive:
         https://developers.google.com/drive/api/quickstart/python
         """
         if token_path:
-            self.__token_path = token_path
+            self.__token_path = Path(token_path)
         else:
             self.__token_path = Path.home() / ".config" / "my_google_drive" / "google_drive_token.json"
+
+        if retrieve_new_token and self.__token_path.exists():
+            os.remove(self.__token_path)
 
         if isinstance(drive_credentials, str):
             if not os.path.isfile(drive_credentials):
@@ -367,7 +376,30 @@ class GoogleDrive:
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
                 logger.info(msg="Google drive token expired, getting a new token by refreshing it")
-                credentials.refresh(Request())
+
+                try:
+                    credentials.refresh(Request())
+                except RefreshError as err:
+                    logger.error(
+                        msg="Error while refreshing credentials. Token will be deleted",
+                        extra={"exception": str(err)},
+                    )
+
+                    if os.path.isfile(self.__token_path):
+                        os.remove(self.__token_path)
+                        logger.debug(
+                            msg="Deleted the token in path",
+                            extra={"file_path": self.__token_path},
+                        )
+                    else:
+                        logger.debug(
+                            msg="Could not delete the token in path",
+                            extra={"file_path": self.__token_path},
+                        )
+
+                    raise GCSError(
+                        "Error while refreshing credentials. Token will be deleted, please re-run the command",
+                    )
             else:
                 logger.info(msg="Google drive is valid, creating the credentials from the token")
 
@@ -386,7 +418,7 @@ class GoogleDrive:
 
                 credentials = flow.run_local_server(port=0, timeout_seconds=300)
 
-            if not self.__token_path.exists():
+            if not self.__token_path.parent.exists():
                 self.__token_path.parent.mkdir()
 
             with open(self.__token_path, "w") as token:

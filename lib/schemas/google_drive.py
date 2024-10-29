@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from typing import Any
 
-from pydantic import EmailStr, field_validator
+from pydantic import EmailStr, Field, field_validator
 
 from .base import BaseSchema
 
@@ -27,7 +27,7 @@ class DriveCredentials(BaseSchema):
     """
 
     web: DriveWebData
-    scopes: list[str] | None = None
+    scopes: list[str] = Field(default=["https://www.googleapis.com/auth/drive"])
 
 
 class DriveFolder(BaseSchema):
