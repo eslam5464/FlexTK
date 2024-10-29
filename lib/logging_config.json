@@ -27,7 +27,7 @@
   "handlers": {
     "stderr": {
       "class": "logging.StreamHandler",
-      "level": "WARNING",
+      "level": "INFO",
       "formatter": "detailed",
       "stream": "ext://sys.stderr"
     },
