@@ -20,21 +20,22 @@ def install_ffmpeg() -> None:
     :raises OSError: If the platform is unsupported.
     """
     check = True
+    ffmpeg_version = "7.1"
     logger.warning("Installing FFMPEG")
 
     if sys.platform == PlatformTypeEnum.windows:
         if not is_chocolatey_installed():
             install_chocolatey()
 
-        batch_file_data = "@echo off\nchoco install ffmpeg-full -y"
+        batch_file_data = f"@echo off\nchoco install ffmpeg-full -y --version={ffmpeg_version}"
         execute_batch_script(batch_file_data)
     elif sys.platform == PlatformTypeEnum.mac:
         if not is_homebrew_installed():
             install_homebrew()
-        subprocess.run(["brew", "install", "ffmpeg"], check=check)
+        subprocess.run(["brew", "install", f"ffmpeg@{ffmpeg_version}"], check=check)
     elif sys.platform == PlatformTypeEnum.linux:
         subprocess.run(["sudo", "apt-get", "update"], check=check)
-        subprocess.run(["sudo", "apt-get", "install", "-y", "ffmpeg"], check=check)
+        subprocess.run(["sudo", "apt-get", "install", "-y", f"ffmpeg={ffmpeg_version}"], check=check)
     else:
         logger.error(f"Unsupported platform {sys.platform} to install ffmpeg")
 
