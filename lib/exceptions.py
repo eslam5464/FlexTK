@@ -1,4 +1,5 @@
 from b2sdk.v2.exception import NonExistentBucket
+from botocore.exceptions import ClientError, NoCredentialsError
 from google.api_core.exceptions import NotFound
 
 
@@ -83,4 +84,31 @@ class GoogleDriveError(CustomException):
     """
 
     def __init__(self, message, exception: Exception | None = None):
+        super().__init__(message, exception)
+
+
+class AWSError(CustomException):
+    """
+    Base exception for AWS
+    """
+
+    def __init__(self, message, exception: Exception | None = None):
+        super().__init__(message, exception)
+
+
+class AWSNoCredentialsError(AWSError):
+    """
+    No Credentials
+    """
+
+    def __init__(self, message, exception: NoCredentialsError | None = None):
+        super().__init__(message, exception)
+
+
+class AWSBucketNotFoundError(AWSError):
+    """
+    Bucket does not exist in AWS
+    """
+
+    def __init__(self, message, exception: ClientError | None = None):
         super().__init__(message, exception)
