@@ -11,6 +11,7 @@ from google.api_core.page_iterator import HTTPIterator
 from google.cloud.storage import Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError, GCSError
 from lib.schemas.google_bucket import (
+    BucketDetails,
     BucketFile,
     BucketFolder,
     CopyBlob,
@@ -31,7 +32,6 @@ class GCS:
 
     def __init__(
         self,
-        bucket_name: str,
         service_account_info: ServiceAccount | str,
     ):
         """
@@ -59,8 +59,6 @@ class GCS:
         else:
             raise NotImplementedError("Parameter not supported")
 
-        self.set_bucket(bucket_name=bucket_name)
-
     @property
     def client(self) -> Client | None:
         return self.__client
@@ -84,7 +82,35 @@ class GCS:
         except NotFound as ex:
             raise GCSBucketNotFoundError(message="Bucket not found", exception=ex)
 
-        return Self
+        return self
+
+    def get_all_buckets(
+        self,
+        max_results: int | None = None,
+        prefix: str | None = None,
+    ) -> list[BucketDetails]:
+        buckets_found = self.__client.list_buckets(
+            max_results=max_results,
+            prefix=prefix,
+        )
+
+        return [
+            BucketDetails(
+                id=bucket_entry.get("id"),
+                name=bucket_entry.get("name"),
+                project_number=bucket_entry.get("projectNumber"),
+                owner=bucket_entry.get("owner"),
+                access_control_list=bucket_entry.get("acl"),
+                entity_tag=bucket_entry.get("etag"),
+                location=bucket_entry.get("location"),
+                location_type=bucket_entry.get("locationType"),
+                iam_configuration=bucket_entry.get("iamConfiguration"),
+                labels=bucket_entry.get("labels"),
+                creation_date=bucket_entry.get("timeCreated"),
+                modification_date=bucket_entry.get("updated"),
+            )
+            for bucket_entry in buckets_found
+        ]
 
     def upload_file(
         self,

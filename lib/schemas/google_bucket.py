@@ -74,3 +74,22 @@ class MoveBlob(BaseSchema):
     bucket_name: str | None = None
     bucket_folder_path: str
     destination_generation_match_precondition: int = 0
+
+
+class BucketDetails(BaseSchema):
+    id: str
+    name: str
+    project_number: int
+    owner: dict
+    access_control_list: list[dict] | None
+    entity_tag: str
+    location: str
+    location_type: str
+    iam_configuration: dict
+    labels: dict
+    creation_date: datetime
+    modification_date: datetime
+
+    @field_validator("project_number", mode="before")
+    def parse_int(cls, value: str) -> int:
+        return int(value)
