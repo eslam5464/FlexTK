@@ -37,10 +37,17 @@ class DriveFolder(BaseSchema):
     in_trash: bool
 
 
+class DriveBlobPermissions(BaseSchema):
+    read: bool = False
+    write: bool = False
+    writer_email: EmailStr | None = None
+
+
 class DriveFileUpload(BaseSchema):
     parent_folder_id: str
     filename_on_drive: str
     file_path: str
+    permissions: DriveBlobPermissions
 
     @field_validator("file_path")
     def validate_path(cls, value: str):
@@ -66,6 +73,8 @@ class DriveFile(BaseSchema):
     id: str
     filename: str
     original_filename: str | None
+    thumbnail_url: str | None
+    thumbnail_large_url: str | None
     extension: str | None
     size_bytes: int | None
     mimeType: str
@@ -92,10 +101,7 @@ class DriveFile(BaseSchema):
         if not value:
             return value
 
+        if "." in value and value[0] == ".":
+            return value
+
         return "." + value
-
-
-class DriveBlobPermissions(BaseSchema):
-    read: bool = False
-    write: bool = False
-    writer_email: EmailStr | None = None

@@ -10,10 +10,10 @@ from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import Resource, build  # noqa
+from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-from lib.exceptions import GCSError, GoogleDriveError
+from lib.exceptions import GoogleDriveError
 from lib.schemas.google_drive import (
     DriveBlobPermissions,
     DriveCredentials,
@@ -84,11 +84,14 @@ class GoogleDrive:
         """
         files_in_folder = []
         query = f"'{parent_folder_id}' in parents and trashed=false"
-        request_fields = "files(id, name, mimeType, size, parents, shared, trashed, createdTime, "
+        request_fields = "files(id, name, mimeType, size, parents, shared, trashed, createdTime, thumbnailLink, "
         request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension)"
         request = self.__service.files().list(q=query, fields=request_fields).execute()
 
         for file_entry in request.get("files"):
+            thumbnail: str = file_entry.get("thumbnailLink")
+            thumbnail_large = None if not thumbnail else thumbnail.split("=")[0]
+
             files_in_folder.append(
                 DriveFile(
                     id=file_entry.get("id"),
@@ -103,6 +106,8 @@ class GoogleDrive:
                     mimeType=file_entry.get("mimeType"),
                     original_filename=file_entry.get("originalFilename"),
                     parent_folder_ids=file_entry.get("parents"),
+                    thumbnail_url=thumbnail,
+                    thumbnail_large_url=thumbnail_large,
                 ),
             )
 
@@ -116,7 +121,7 @@ class GoogleDrive:
         :raises GoogleDriveError: If an error occurs during the API request.
         """
         try:
-            request_fields = "id, name, mimeType, size, parents, shared, trashed, createdTime, "
+            request_fields = "id, name, mimeType, size, parents, shared, trashed, createdTime, thumbnailLink, "
             request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension"
             request = (
                 self.__service.files()
@@ -126,6 +131,8 @@ class GoogleDrive:
                 )
                 .execute()
             )
+            thumbnail: str = request.get("thumbnailLink")
+            thumbnail_large = None if not thumbnail else thumbnail.split("=")[0]
 
             return DriveFile(
                 id=request.get("id"),
@@ -140,6 +147,8 @@ class GoogleDrive:
                 mimeType=request.get("mimeType"),
                 original_filename=request.get("originalFilename"),
                 parent_folder_ids=request.get("parents"),
+                thumbnail_url=thumbnail,
+                thumbnail_large_url=thumbnail_large,
             )
         except HttpError as error:
             logger.warning(
@@ -197,14 +206,12 @@ class GoogleDrive:
     def upload_files(
         self,
         files_to_upload: list[DriveFileUpload],
-        permissions: DriveBlobPermissions,
     ) -> list[DriveFile]:
         """
         Uploads an image file to a specified Google Drive folder. Load
         pre-authorized user credentials from the environment. For more
         information see https://developers.google.com/identity
         :param files_to_upload: List of GoogleDriveFileUpload object that contains the details of the file.
-        :param permissions: An instance of DriveBlobPermissions that defines the access control for the folder.
         :return: The ID of the uploaded file if successful, otherwise None.
         :raises GoogleDriveError: If an error occurs during the file upload process.
         """
@@ -220,9 +227,9 @@ class GoogleDrive:
 
                 self._set_permissions(
                     file_id=file_id,
-                    view=permissions.read,
-                    write=permissions.write,
-                    write_permission_email=permissions.writer_email,
+                    view=file_entry.permissions.read,
+                    write=file_entry.permissions.write,
+                    write_permission_email=file_entry.permissions.writer_email,
                 )
 
                 logger.info(
@@ -397,7 +404,7 @@ class GoogleDrive:
                             extra={"file_path": self.__token_path},
                         )
 
-                    raise GCSError(
+                    raise GoogleDriveError(
                         "Error while refreshing credentials. Token will be deleted, please re-run the command",
                     )
             else:
