@@ -22,6 +22,7 @@ from lib.schemas.google_drive import (
     DriveFileUpload,
     DriveFolder,
 )
+from pydantic import EmailStr
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ class GoogleDrive:
                 permissions=request.get("permissions"),
             )
         except HttpError as error:
-            logger.warning(
+            logger.error(
                 msg=f"while retrieving file with id '{file_id}' found error: {error.reason}",
                 extra={"exception": error},
             )
@@ -201,7 +202,7 @@ class GoogleDrive:
 
             return drive_folders
         except HttpError as error:
-            logger.warning(
+            logger.error(
                 msg=f"while checking folder '{folder_name}' found error: {error.reason}",
                 extra={"exception": error},
             )
@@ -335,9 +336,9 @@ class GoogleDrive:
     def _set_permissions(
         self,
         file_id: str,
-        write_permission_email: str | None = None,
-        read_permission_email: str | None = None,
-        public_view: bool = True,
+        write_permission_email: EmailStr | None = None,
+        read_permission_email: EmailStr | None = None,
+        public_view: bool = False,
     ) -> None:
         """
         Sets permissions (viewer or writer) on a specified file in Google Drive.
