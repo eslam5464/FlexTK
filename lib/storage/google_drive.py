@@ -85,7 +85,7 @@ class GoogleDrive:
         files_in_folder = []
         query = f"'{parent_folder_id}' in parents and trashed=false"
         request_fields = "files(id, name, mimeType, size, parents, shared, trashed, createdTime, thumbnailLink, "
-        request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension)"
+        request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension, owners, permissions)"
         request = self.__service.files().list(q=query, fields=request_fields).execute()
 
         for file_entry in request.get("files"):
@@ -108,6 +108,8 @@ class GoogleDrive:
                     parent_folder_ids=file_entry.get("parents"),
                     thumbnail_url=thumbnail,
                     thumbnail_large_url=thumbnail_large,
+                    owners=file_entry.get("owners"),
+                    permissions=file_entry.get("permissions"),
                 ),
             )
 
@@ -122,7 +124,7 @@ class GoogleDrive:
         """
         try:
             request_fields = "id, name, mimeType, size, parents, shared, trashed, createdTime, thumbnailLink, "
-            request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension"
+            request_fields += "modifiedTime, version, originalFilename, trashedTime, fileExtension, owners, permissions"
             request = (
                 self.__service.files()
                 .get(
@@ -149,6 +151,8 @@ class GoogleDrive:
                 parent_folder_ids=request.get("parents"),
                 thumbnail_url=thumbnail,
                 thumbnail_large_url=thumbnail_large,
+                owners=request.get("owners"),
+                permissions=request.get("permissions"),
             )
         except HttpError as error:
             logger.warning(
@@ -227,9 +231,9 @@ class GoogleDrive:
 
                 self._set_permissions(
                     file_id=file_id,
-                    view=file_entry.permissions.read,
-                    write=file_entry.permissions.write,
+                    public_view=file_entry.permissions.public_read,
                     write_permission_email=file_entry.permissions.writer_email,
+                    read_permission_email=file_entry.permissions.reader_email,
                 )
 
                 logger.info(
@@ -278,9 +282,9 @@ class GoogleDrive:
 
             self._set_permissions(
                 file_id=folder_id,
-                view=permissions.read,
-                write=permissions.write,
+                public_view=permissions.public_read,
                 write_permission_email=permissions.writer_email,
+                read_permission_email=permissions.reader_email,
             )
 
             return DriveFolder(
@@ -332,22 +336,19 @@ class GoogleDrive:
         self,
         file_id: str,
         write_permission_email: str | None = None,
-        view: bool = True,
-        write: bool = False,
+        read_permission_email: str | None = None,
+        public_view: bool = True,
     ) -> None:
         """
         Sets permissions (viewer or writer) on a specified file in Google Drive.
         :param file_id: The ID of the file for which permissions are to be set.
-        :param view: Optional. Set to True to grant reader (view-only) permission. Defaults to True.
-        :param write: Optional. Set to True to grant writer (edit) permission. Defaults to False.
+        :param public_view: Optional. Set to True to grant public reader (view-only) permission. Defaults to True.
         :param write_permission_email: Optional. The Email to set the write permission to.
+        :param read_permission_email: Optional. The Email to set the read permission to.
         :raises ValueError: If both view and write parameters are False.
         :raises HttpError: If an error occurs during the permissions setting process.
         """
-        if write:
-            if not write_permission_email:
-                raise GoogleDriveError("Email must be initialized for the write permission")
-
+        if write_permission_email:
             writer_permission = {
                 "type": "user",
                 "role": "writer",
@@ -359,7 +360,19 @@ class GoogleDrive:
                 fields="id",
             ).execute()
 
-        if view:
+        if read_permission_email:
+            reader_permission = {
+                "type": "user",
+                "role": "reader",
+                "emailAddress": read_permission_email,
+            }
+            self.__service.permissions().create(  # noqa
+                fileId=file_id,
+                body=reader_permission,
+                fields="id",
+            ).execute()
+
+        if public_view:
             viewer_permission = {"type": "anyone", "role": "reader"}
             self.__service.permissions().create(fileId=file_id, body=viewer_permission, fields="id").execute()  # noqa
 
