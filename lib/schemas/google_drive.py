@@ -165,3 +165,13 @@ class DriveFile(BaseSchema):
             return value
 
         return "." + value
+
+
+class DriveStorageDetails(BaseSchema):
+    limit_gb: float
+    usage_gb: float
+    usage_in_drive_gb: float
+
+    @field_validator("limit_gb", "usage_gb", "usage_in_drive_gb")
+    def parse_float(cls, value: int):
+        return value / (1024**3)

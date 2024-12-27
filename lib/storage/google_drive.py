@@ -21,6 +21,7 @@ from lib.schemas.google_drive import (
     DriveFileDownload,
     DriveFileUpload,
     DriveFolder,
+    DriveStorageDetails,
 )
 from pydantic import EmailStr
 
@@ -332,6 +333,25 @@ class GoogleDrive:
             raise GoogleDriveError(error.reason)
 
         return self
+
+    def get_storage_info(self) -> DriveStorageDetails:
+        """
+        Retrieve storage information for the authenticated Google Drive account.
+        :return: A DriveStorageDetails object containing storage information.
+        :raises GoogleDriveError: If an error occurs while fetching the storage details.
+        """
+        try:
+            about_info = self.__service.about().get(fields="storageQuota").execute()
+            storage_quota = about_info.get("storageQuota", {})
+
+            return DriveStorageDetails(
+                limit_gb=int(storage_quota.get("limit", 0)),
+                usage_gb=int(storage_quota.get("usage", 0)),
+                usage_in_drive_gb=int(storage_quota.get("usageInDrive", 0)),
+            )
+        except HttpError as error:
+            logger.error(msg=f"An error occurred: {error}", extra={"exception": error})
+            raise GoogleDriveError(error.reason)
 
     def _set_permissions(
         self,
