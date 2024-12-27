@@ -5,8 +5,8 @@ from typing import Literal
 import click
 from core.helpers import get_bb2_configuration
 from core.schema import ClickColors, ContextKeys
-from lib.schemas.black_blaze_bucket import ApplicationData
-from lib.storage.buckets.black_blaze_b2 import B2BucketTypeEnum, BlackBlaze
+from lib.schemas.back_blaze_bucket import ApplicationData
+from lib.storage.buckets.back_blaze_b2 import B2BucketTypeEnum, BlackBlaze
 
 B2_BUCKET_TYPE_VALUES = [e.value for e in B2BucketTypeEnum]
 

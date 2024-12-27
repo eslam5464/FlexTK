@@ -13,7 +13,7 @@ from lib.exceptions import (
     B2BucketNotSelectedError,
     BlackBlazeError,
 )
-from lib.schemas.black_blaze_bucket import (
+from lib.schemas.back_blaze_bucket import (
     ApplicationData,
     FileDownloadLink,
     UploadedFileInfo,

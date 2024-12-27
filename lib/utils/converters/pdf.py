@@ -28,7 +28,7 @@ def convert_document(
     if not os.path.exists(source_document):
         raise FileNotFoundError("Input file not found")
 
-    if os.path.isdir(output_dir):
+    if not os.path.isdir(output_dir):
         raise NotADirectoryError("Output path is not a directory")
 
     args = [
