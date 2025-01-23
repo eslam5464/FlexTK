@@ -42,7 +42,7 @@ class BucketFile(BaseSchema):
     md5_hash: str
     crc32c_checksum: int
     content_type: str
-    metadata: dict
+    metadata: dict | None = None
     creation_date: datetime
     modification_date: datetime
 

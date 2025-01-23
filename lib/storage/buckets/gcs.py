@@ -4,11 +4,11 @@ import mimetypes
 import os
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Any, Self
+from typing import Any, Iterator, Self
 
 from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
-from google.cloud.storage import Bucket, Client
+from google.cloud.storage import Blob, Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError, GCSError
 from lib.schemas.google_bucket import (
     BucketDetails,
@@ -297,7 +297,7 @@ class GCS:
         if not folder_path_in_bucket.endswith("/"):
             folder_path_in_bucket += "/"
 
-        blobs = self.__bucket.list_blobs(prefix=folder_path_in_bucket)
+        blobs: Iterator[Blob] = self.__bucket.list_blobs(prefix=folder_path_in_bucket)
         folder_path_in_bucket = "" if not folder_path_in_bucket else folder_path_in_bucket
 
         for blob in blobs:
