@@ -1,13 +1,17 @@
+import concurrent.futures
 import logging
 import math
 import mimetypes
 import os
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Iterator, Self
 
+import requests.adapters
 from google.api_core.exceptions import NotFound
 from google.api_core.page_iterator import HTTPIterator
+from google.auth.transport.requests import AuthorizedSession
 from google.cloud.storage import Blob, Bucket, Client
 from lib.exceptions import GCSBucketNotFoundError, GCSBucketNotSelectedError, GCSError
 from lib.schemas.google_bucket import (
@@ -349,26 +353,35 @@ class GCS:
     def download_multiple_files(
         self,
         files_to_download: list[DownloadBucketFile],
+        max_workers: int = 10,
+        gcs_max_pool_connections: int = 10,
     ) -> Self:
         """
         Download multiple files from bucket's path to disk
         :param files_to_download: List of file schemas to download
+        :param max_workers: The maximum number of threads to use for downloading files
+        :param gcs_max_pool_connections: The maximum number of connections pool in GCS client
         :return: The GCS instance.
         :raise NotADirectoryError: Download directory not found
         :raise GCSBucketNotSelectedError: No bucket is selected
         """
         self.__check_bucket_is_selected()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=gcs_max_pool_connections,
+            pool_maxsize=gcs_max_pool_connections,
+        )
+        session = AuthorizedSession(self.__client._credentials)  # noqa
+        session.mount(prefix="https://", adapter=adapter)
+        session.mount(prefix="http://", adapter=adapter)
+        self.__client._http_internal = session
 
-        for file_entry in files_to_download:
+        def download_file(file_entry: DownloadBucketFile):
             logger.info(
                 msg=f"Downloading file {file_entry.bucket_path}",
                 extra={"download_location": file_entry.download_directory},
             )
             blob = self.__bucket.blob(file_entry.bucket_path)
-            destination_file_name = os.path.join(
-                file_entry.download_directory,
-                file_entry.filename_on_disk,
-            )
+            destination_file_name = str(Path(file_entry.download_directory) / file_entry.filename_on_disk)
             file_basename = os.path.basename(file_entry.bucket_path)
             logger.debug(
                 msg=f"Downloading {file_basename} from bucket",
@@ -379,6 +392,10 @@ class GCS:
                 },
             )
             blob.download_to_filename(destination_file_name)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(download_file, file_entry): file_entry for file_entry in files_to_download}
+            concurrent.futures.wait(futures)
 
         return self
 
