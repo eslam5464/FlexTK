@@ -2,7 +2,6 @@ import json
 import logging
 import logging.config
 import os.path
-from copy import deepcopy
 from datetime import datetime, timezone
 
 LOG_RECORD_BUILTIN_ATTRS = {
@@ -113,22 +112,17 @@ def configure_logging() -> None:
     modifying configuration files, and applying the logging configuration.
     can be used like below
 
-        >>> logger = logging.getLogger(__name__)
-        >>> logger.info("Test log message")
+        >>> logger = logging.getLogger(__name__) # at the top of each script
+        >>> logger.info("Test log message") # at any line in the script
     :return: None
     """
     cwd = os.path.dirname(os.path.realpath(__file__))
     logs_folder_directory = os.path.join(cwd, "logs")
-    log_file_path = os.path.join(logs_folder_directory, "log.jsonl").replace(
-        "\\",
-        "\\\\",
-    )
+    log_file_path = os.path.join(logs_folder_directory, "log.jsonl").replace("\\", "\\\\")
     config_file_path = os.path.join(cwd, "logging_config.json")
-    logger_dict = deepcopy(logging.root.manager.loggerDict)
-    logging.root.manager.loggerDict = logger_dict
 
     if not os.path.exists(logs_folder_directory):
-        os.mkdir(logs_folder_directory)
+        os.makedirs(logs_folder_directory, exist_ok=True)
 
     replace_log_directory_name(
         file_location=config_file_path,
