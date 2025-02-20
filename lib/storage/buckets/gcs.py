@@ -1,10 +1,12 @@
 import concurrent.futures
+import hashlib
 import logging
 import math
 import mimetypes
 import os
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Iterator, Self
 
@@ -182,6 +184,83 @@ class GCS:
         blob.upload_from_filename(filename=file_path, content_type=content_type, timeout=timeout)
 
         return self.get_file(bucket_folder_path)
+
+    def upload_bytesio(
+        self,
+        bytes_io: BytesIO,
+        target_filename: str,
+        bucket_folder_path: str,
+        timeout: int = 300,
+        content_type: str | None = None,
+        calculate_upload_estimation: bool = False,
+        check_if_exists: bool = False,
+    ) -> BucketFile | None:
+        """
+        Uploads a BytesIO object to the specified bucket folder.
+        :param bytes_io: The BytesIO object containing the file data.
+        :param target_filename: The name of the file as it should appear in the bucket.
+        :param content_type: Content type of the uploaded file.
+        :param bucket_folder_path: The folder path in the bucket where the file will be uploaded.
+        :param timeout: The maximum time, in seconds, to wait for the upload to complete.
+        :param calculate_upload_estimation: Whether to estimate upload time and adjust timeout.
+        :param check_if_exists: Whether to check if a file with the same MD5 hash already exists.
+        :return: BucketFile if uploaded or existing, None otherwise.
+        :raises GCSBucketNotSelectedError: If no bucket is selected.
+        :raises GCSError: If duplicate files are found when check_if_exists is True.
+        """
+        self.__check_bucket_is_selected()
+
+        if not bucket_folder_path.endswith("/"):
+            bucket_folder_path += "/"
+        blob_path = f"{bucket_folder_path}{target_filename}"
+
+        if check_if_exists:
+            hash_md5 = hashlib.md5()
+            original_pos = bytes_io.tell()
+            bytes_io.seek(0)
+            for chunk in iter(lambda: bytes_io.read(4096), b""):
+                hash_md5.update(chunk)
+            current_file_md5_hash = hash_md5.hexdigest()
+            bytes_io.seek(original_pos)
+
+            existing_files = [f for f in self.get_files(bucket_folder_path) if f.md5_hash == current_file_md5_hash]
+
+            if len(existing_files) == 1:
+                logger.info(f"Skipping existing file {target_filename} (MD5 match)")
+                return existing_files[0]
+            elif len(existing_files) > 1:
+                logger.error(f"Found {len(existing_files)} duplicates for {target_filename}")
+                raise GCSError(f"Multiple existing files with same MD5: {target_filename}")
+
+        if calculate_upload_estimation:
+            original_pos = bytes_io.tell()
+            bytes_io.seek(0, os.SEEK_END)
+            file_size = bytes_io.tell()
+            bytes_io.seek(original_pos)
+
+            if file_size:
+                file_size_mb = math.ceil(file_size / (1024 * 1024))
+                est_time = estimate_upload_time(file_size_mb=file_size_mb)
+                logger.info(f"Estimated upload time: {est_time:.1f}s")
+                timeout = max(timeout, math.ceil(est_time))
+
+        blob = self.__bucket.blob(blob_path)
+
+        try:
+            bytes_io.seek(0)
+            blob.upload_from_file(
+                file_obj=bytes_io,
+                content_type=content_type,
+                timeout=timeout,
+                num_retries=3,
+            )
+        except Exception as ex:
+            logger.error(msg=f"Failed to upload {target_filename}", extra={"exception": ex})
+            raise GCSError("File upload failed")
+        finally:
+            bytes_io.seek(0)
+
+        return self.get_file(blob_path)
 
     def move_file(
         self,
