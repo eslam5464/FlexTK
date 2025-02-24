@@ -212,6 +212,7 @@ class GCS:
 
         if not bucket_folder_path.endswith("/"):
             bucket_folder_path += "/"
+
         blob_path = f"{bucket_folder_path}{target_filename}"
 
         if check_if_exists:
@@ -252,7 +253,6 @@ class GCS:
                 file_obj=bytes_io,
                 content_type=content_type,
                 timeout=timeout,
-                num_retries=3,
             )
         except Exception as ex:
             logger.error(msg=f"Failed to upload {target_filename}", extra={"exception": ex})
@@ -477,6 +477,27 @@ class GCS:
             concurrent.futures.wait(futures)
 
         return self
+
+    def download_file_bytes(self, bucket_folder_path: str) -> BytesIO | None:
+        """
+        Download a file from the bucket and return the file as BytesIO object or None
+        if it does not exist
+        :param bucket_folder_path: Path of the file in the bucket
+        :return: BytesIO object or None depends on the file existence in the bucket
+        :raise GCSBucketNotSelectedError: No bucket is selected
+        """
+        self.__check_bucket_is_selected()
+        file_to_download = self.get_file(bucket_folder_path)
+
+        if not file_to_download:
+            return file_to_download
+
+        file_blob = self.__bucket.blob(bucket_folder_path)
+        file_stream = BytesIO()
+        file_blob.download_to_file(file_stream)
+        file_stream.seek(0)
+
+        return file_stream
 
     def delete_files(
         self,
