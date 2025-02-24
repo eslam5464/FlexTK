@@ -37,7 +37,14 @@ class DriveCredentials(BaseSchema):
     """
 
     web: DriveWebData
-    scopes: list[str] = Field(default=["https://www.googleapis.com/auth/drive"])
+    scopes: list[str] | None = None
+
+    @field_validator("scopes")
+    def set_scopes(cls, value: list[str] | None) -> list[str]:
+        if value:
+            return value
+
+        return ["https://www.googleapis.com/auth/drive"]
 
 
 class DriveFolder(BaseSchema):
