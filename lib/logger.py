@@ -86,26 +86,6 @@ class MyJSONFormatter(logging.Formatter):
         return message
 
 
-def replace_log_directory_name(
-    file_location: str,
-    old_string: str,
-    new_string: str,
-) -> None:
-    """
-    Replaces occurrences of a string in a file with a new string.
-    :param file_location: str - The path to the file to modify.
-    :param old_string: str - The string to replace.
-    :param new_string: str - The replacement string.
-    :return: None
-    """
-    with open(file_location, "r") as log_file:
-        file_data = log_file.read()
-
-    with open(file_location, "w") as log_file:
-        file_data = file_data.replace(old_string, new_string)
-        log_file.write(file_data)
-
-
 def configure_logging() -> None:
     """
     This function sets up logging by creating necessary directories,
@@ -124,19 +104,8 @@ def configure_logging() -> None:
     if not os.path.exists(logs_folder_directory):
         os.makedirs(logs_folder_directory, exist_ok=True)
 
-    replace_log_directory_name(
-        file_location=config_file_path,
-        old_string="LOG_FILE_DIRECTORY",
-        new_string=log_file_path,
-    )
-
     with open(config_file_path) as config_file:
         config = json.load(config_file)
 
-    replace_log_directory_name(
-        file_location=config_file_path,
-        new_string="LOG_FILE_DIRECTORY",
-        old_string=log_file_path,
-    )
-
+    config["handlers"]["file_json"]["filename"] = log_file_path
     logging.config.dictConfig(config)
