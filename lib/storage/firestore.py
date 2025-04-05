@@ -18,6 +18,10 @@ class Firestore:
     _firestore_db: Client | None = field(init=False, default=None)
 
     def __init__(self, service_account: FirebaseServiceAccount):
+        """
+        Initialize the Firestore class
+        :param service_account: The Firebase service account
+        """
         try:
             firebase_admin.get_app()
             self._firestore_db = firestore.client(self._default_app)
@@ -47,6 +51,11 @@ class Firestore:
 
     @property
     def app(self) -> App:
+        """
+        Get the default Firebase app
+        :return: The default Firebase app
+        :raises ValueError: If the default Firebase app is not initialized
+        """
         if self._default_app is None:
             logger.error(msg="Firebase app not initialized")
             raise ValueError("Firebase app not initialized")
@@ -55,6 +64,11 @@ class Firestore:
 
     @property
     def firestore_client(self) -> Client:
+        """
+        Get the Firestore client
+        :return: The Firestore client
+        :raises ValueError: If the Firestore client is not initialized
+        """
         if self._firestore_db is None:
             logger.error(msg="Firestore client not initialized")
             raise ValueError("Firestore client not initialized")
@@ -62,6 +76,12 @@ class Firestore:
         return self._firestore_db
 
     def fetch_all_documents(self, collection_name: str) -> list[dict[str, Any]]:
+        """
+        Fetch all documents from a collection
+        :param collection_name: The name of the collection
+        :return: A list of documents
+        :raises Exception: If there is an error fetching the documents
+        """
         try:
             collection_ref = self._firestore_db.collection(collection_name)
             docs = collection_ref.stream()
@@ -70,7 +90,14 @@ class Firestore:
             logger.error(msg="Error fetching documents from collection", extra={"exception": ex})
             raise ex
 
-    def add_document(self, collection_name: str, document_id: str, data: dict):
+    def add_document(self, collection_name: str, document_id: str, data: dict) -> None:
+        """
+        Add a document to a collection
+        :param collection_name: Name of the collection to add the document to
+        :param document_id: ID of the document
+        :param data: Data to add to the document
+        :raises Exception: If there is an error adding the document
+        """
         try:
             doc_ref = self._firestore_db.collection(collection_name).document(document_id)
             doc_ref.set(data)
@@ -82,7 +109,14 @@ class Firestore:
             logger.error(msg="Error adding document to collection", extra={"exception": ex})
             raise ex
 
-    def update_document(self, collection_name: str, document_id: str, data: dict):
+    def update_document(self, collection_name: str, document_id: str, data: dict) -> None:
+        """
+        Update a document in a collection
+        :param collection_name: Name of the collection
+        :param document_id: ID of the document
+        :param data: Data to update
+        :raises Exception: If there is an error updating the document
+        """
         try:
             doc_ref = self._firestore_db.collection(collection_name).document(document_id)
             doc_ref.update(data)
@@ -97,7 +131,13 @@ class Firestore:
             )
             raise ex
 
-    def remove_document(self, collection_name: str, document_id: str):
+    def remove_document(self, collection_name: str, document_id: str) -> None:
+        """
+        Remove a document from a collection
+        :param collection_name: Name of the collection
+        :param document_id: ID of the document
+        :raises Exception: If there is an error removing the document
+        """
         try:
             doc_ref = self._firestore_db.collection(collection_name).document(document_id)
             doc_ref.delete()
@@ -111,7 +151,14 @@ class Firestore:
             )
             raise ex
 
-    def get_document(self, collection_name: str, document_id: str):
+    def get_document(self, collection_name: str, document_id: str) -> dict[str, Any] | None:
+        """
+        Get a document from a collection
+        :param collection_name: Name of the collection
+        :param document_id: ID of the document to get
+        :return: The document data or None if the document does not exist
+        :raises Exception: If there is an error getting the document
+        """
         try:
             doc_ref = self._firestore_db.collection(collection_name).document(document_id)
             doc = doc_ref.get()

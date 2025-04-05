@@ -17,6 +17,10 @@ class Firebase:
     _app_certificate: Certificate | None = field(init=False, default=None)
 
     def __init__(self, service_account: FirebaseServiceAccount):
+        """
+        Initialize Firebase app
+        :param service_account: Service account information
+        """
         try:
             firebase_admin.get_app()
             app_exists = True
@@ -52,6 +56,9 @@ class Firebase:
         Fetch user by ID
         :param user_id: The user ID to fetch
         :return: The user record for the given user ID
+        :raise ValueError: If user ID is malformed
+        :raise ConnectionAbortedError: If the user is not found
+        :raise ConnectionError: If there is an error getting the user
         """
         try:
             return auth.get_user(
@@ -73,6 +80,9 @@ class Firebase:
         Fetch user by email address
         :param email: The email address to fetch
         :return: The user record for the given email
+        :raise ValueError: If email is malformed
+        :raise ConnectionAbortedError: If the user is not found
+        :raise ConnectionError: If there is an error getting the user
         """
         try:
             return auth.get_user_by_email(
@@ -94,6 +104,9 @@ class Firebase:
         Fetch user by phone number
         :param phone_number: The phone number to fetch
         :return: The user record for the given phone number
+        :raise ValueError: If phone_number is malformed
+        :raise ConnectionAbortedError: If the user is not found
+        :raise ConnectionError: If there is an error getting the user
         """
         try:
             return auth.get_user_by_phone_number(
@@ -115,6 +128,8 @@ class Firebase:
         Fetch all users
         :param max_results: The maximum number of users to fetch
         :return: A list of user records for all users
+        :raise ValueError: If max_results is malformed
+        :raise ConnectionError: If there is an error getting all users
         """
         try:
             return auth.list_users(app=self._default_app, max_results=max_results)
