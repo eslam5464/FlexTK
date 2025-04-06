@@ -1,4 +1,9 @@
 from enum import StrEnum
+from typing import Any
+
+from requests.structures import CaseInsensitiveDict
+
+from .base import BaseSchema
 
 
 class HTTPRequestMethod(StrEnum):
@@ -11,3 +16,14 @@ class HTTPRequestMethod(StrEnum):
     post = "POST"
     put = "PUT"
     trace = "TRACE"
+
+
+class ApiResponse(BaseSchema):
+    status_code: int
+    message: str
+    json_data: dict
+    text_data: str
+    reason: str
+    headers: CaseInsensitiveDict
+    raw: Any
+    extra: Any | None = None

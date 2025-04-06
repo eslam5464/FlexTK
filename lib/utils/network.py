@@ -1,7 +1,8 @@
 import http.client
 import time
 
-from lib.schemas.network import HTTPRequestMethod
+from lib.schemas.network import ApiResponse, HTTPRequestMethod
+from requests import JSONDecodeError, Response
 
 
 def estimate_upload_time(
@@ -39,3 +40,27 @@ def estimate_upload_time(
         return file_size_mb / upload_speed_mbps
     else:
         return upload_speed_mbps
+
+
+def parse_response(response: Response, extra: dict | None = None) -> ApiResponse:
+    """
+    Parse the response and return an ApiResponse object with the parsed data
+    :param response:
+    :param extra:
+    :return:
+    """
+    try:
+        json_response = response.json()
+    except JSONDecodeError:
+        json_response = {}
+
+    return ApiResponse(
+        status_code=response.status_code,
+        message=response.reason,
+        json_data=json_response,
+        text_data=response.text,
+        reason=response.reason,
+        headers=response.headers,
+        raw=response.raw,
+        extra=extra,
+    )
