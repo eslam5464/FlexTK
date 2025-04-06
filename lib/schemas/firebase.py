@@ -35,3 +35,22 @@ class FirebaseServiceAccount(BaseSchema):
             self.private_key = self.private_key_path.read_text()
 
         return self
+
+
+class FirebaseSignInResponse(BaseSchema):
+    id_token: str
+    decoded_token: TokenData | None
+    email: str
+    refresh_token: str
+    expires_in: int
+    local_id: str
+    registered: bool
+
+
+class FirebaseSignUpResponse(BaseSchema):
+    id_token: str
+    decoded_token: TokenData | None
+    email: str
+    refresh_token: str
+    expires_in: int
+    local_id: str

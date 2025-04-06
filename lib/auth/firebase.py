@@ -2,11 +2,20 @@ import logging
 from dataclasses import dataclass, field
 
 import firebase_admin
+import jwt
+import requests
 from firebase_admin import App, auth, credentials
 from firebase_admin.auth import ListUsersPage, UserNotFoundError, UserRecord
 from firebase_admin.credentials import Certificate
 from firebase_admin.exceptions import FirebaseError
-from lib.schemas.firebase import FirebaseServiceAccount
+from lib.schemas.firebase import (
+    FirebaseServiceAccount,
+    FirebaseSignInResponse,
+    FirebaseSignUpResponse,
+    TokenData,
+)
+from lib.schemas.network import ApiResponse
+from lib.utils.network import parse_response
 
 logger = logging.getLogger(__name__)
 
@@ -139,3 +148,111 @@ class Firebase:
         except FirebaseError as err:
             logger.error(msg="Error getting all users", extra={"exception": err})
             raise ConnectionError("Unknown error getting all users")
+
+
+class FirebaseAuth:
+    _firebase_web_api_key: str | None = field(init=False, default=None)
+
+    def __init__(self, firebase_web_api_key: str):
+        """
+        Initialize firebase authentication
+        :param firebase_web_api_key: The firebase web api key
+        """
+        self._firebase_web_api_key = firebase_web_api_key
+
+    def sign_up_email_and_password(self, email: str, password: str):
+        firebase_identity_base_url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="
+        request_ref = f"{firebase_identity_base_url}{self._firebase_web_api_key}"
+        headers = {"content-type": "application/json; charset=UTF-8"}
+        data = {"email": email, "password": password, "returnSecureToken": True}
+        response = requests.post(url=request_ref, headers=headers, json=data)
+
+        parsed_response = parse_response(response)
+
+        id_token = parsed_response.json_data.get("idToken")
+
+        return FirebaseSignUpResponse(
+            id_token=id_token,
+            decoded_token=self.decode_token(id_token),
+            email=parsed_response.json_data.get("email"),
+            refresh_token=parsed_response.json_data.get("refreshToken"),
+            expires_in=int(parsed_response.json_data.get("expiresIn")),
+            local_id=parsed_response.json_data.get("localId"),
+        )
+
+    def sign_in_email_and_password(self, email: str, password: str) -> FirebaseSignInResponse:
+        """
+        Sign in with email and password using firebase authentication
+        :param email: email address
+        :param password: password
+        :return: ApiResponse
+        """
+        firebase_identity_base_url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="
+        request_ref = f"{firebase_identity_base_url}{self._firebase_web_api_key}"
+        headers = {"content-type": "application/json; charset=UTF-8"}
+        data = {"email": email, "password": password, "returnSecureToken": True}
+        response = requests.post(url=request_ref, headers=headers, json=data)
+        parsed_response = parse_response(response)
+        id_token = parsed_response.json_data.get("idToken")
+
+        return FirebaseSignInResponse(
+            id_token=id_token,
+            decoded_token=self.decode_token(id_token),
+            email=parsed_response.json_data.get("email"),
+            refresh_token=parsed_response.json_data.get("refreshToken"),
+            expires_in=int(parsed_response.json_data.get("expiresIn")),
+            local_id=parsed_response.json_data.get("localId"),
+            registered=parsed_response.json_data.get("registered"),
+        )
+
+    def send_password_reset_email(self, email: str) -> ApiResponse:
+        """
+        Send password reset email to the user
+        :param email: email address of the user
+        :return: ApiResponse object with the parsed data
+        """
+        firebase_identity_base_url = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key="
+        request_ref = f"{firebase_identity_base_url}{self._firebase_web_api_key}"
+        headers = {"content-type": "application/json; charset=UTF-8"}
+        data = {"email": email, "requestType": "PASSWORD_RESET"}
+        response = requests.post(url=request_ref, headers=headers, json=data)
+
+        return parse_response(response)
+
+    def confirm_password_reset_code(self, oob_code: str) -> ApiResponse:
+        """
+        Confirm password reset code and reset the password for the user
+        :param oob_code: Password reset code
+        :return: ApiResponse object with the parsed data
+        """
+        firebase_identity_base_url = "https://identitytoolkit.googleapis.com/v1/accounts:resetPassword?key="
+        request_ref = f"{firebase_identity_base_url}{self._firebase_web_api_key}"
+        headers = {"content-type": "application/json; charset=UTF-8"}
+        data = {"oobCode": oob_code}
+        response = requests.post(url=request_ref, headers=headers, json=data)
+
+        return parse_response(response)
+
+    @staticmethod
+    def decode_token(auth_token: str) -> TokenData | None:
+        """
+        Decode the token and return the token data
+        :param auth_token: Authentication token
+        :return: TokenData object or None
+        """
+        try:
+            decoded_token = jwt.decode(
+                jwt=auth_token,
+                options={"verify_signature": False},
+            )
+            return TokenData(
+                user_id=decoded_token.get("user_id"),
+                email=decoded_token.get("email"),
+                name=decoded_token.get("name"),
+                issued=decoded_token.get("iat"),
+                expires=decoded_token.get("exp"),
+                issuer=decoded_token.get("iss"),
+            )
+        except jwt.DecodeError as err:
+            logger.error(msg="Error decoding token", extra={"exception": err})
+            return None
