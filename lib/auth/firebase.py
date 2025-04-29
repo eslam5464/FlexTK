@@ -159,6 +159,51 @@ class FirebaseAuth:
         :param firebase_web_api_key: The firebase web api key
         """
         self._firebase_web_api_key = firebase_web_api_key
+        self.validate_api_key()
+
+    def validate_api_key(self):
+        """
+        Validate the firebase api key by making a request to the Firebase Authentication API
+        :return: True if the API key is valid, False otherwise
+        :raises ConnectionAbortedError: If the API key is not valid
+        :raises ConnectionError: If there is an error validating the API key
+        """
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={self._firebase_web_api_key}"
+
+        # Use deliberately invalid email format to trigger predictable error response
+        payload = {
+            "email": "invalid-email",
+            "password": "fakePassword123",
+            "returnSecureToken": True,
+        }
+
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            logger.debug(msg="API key is valid")
+            return False  # This line only reached if request succeeded (unlikely with invalid credentials)
+
+        except requests.exceptions.HTTPError as ex:
+            try:
+                error_data = ex.response.json()
+                error_msg = error_data.get("error", {}).get("message", "")
+
+                if "INVALID_EMAIL" in error_msg:
+                    # API key is valid but credentials are invalid
+                    return True
+                elif "API key not valid" in error_msg:
+                    raise ConnectionAbortedError("API key not valid")
+
+            except ValueError:
+                logger.error(msg="Error validating API key", extra={"exception": ex})
+                raise ConnectionError("Unknown error validating API key")
+
+        except requests.exceptions.RequestException as ex:
+            logger.error(msg="Error validating API key", extra={"exception": ex})
+            raise ConnectionError("Unknown error validating API key")
+
+        logger.error(msg="Error validating API key")
+        raise ConnectionError("Unknown error validating API key")
 
     def sign_up_email_and_password(self, email: str, password: str):
         firebase_identity_base_url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="
