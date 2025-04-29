@@ -29,6 +29,8 @@ google-auth-httplib2 = "^0.2.0"
 boto3 = "^1.35.54"
 openpyxl = "^3.1.5"
 firebase-admin = "^6.7.0"
+ultralytics = "^8.3.119"
+dill = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 black = "^24.4.2"

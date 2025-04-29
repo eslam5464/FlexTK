@@ -1,9 +1,11 @@
 import json
+import logging
 import os.path
 import re
 import subprocess
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import IntEnum, StrEnum
+from pathlib import Path
 from typing import Literal, Self
 
 import cv2
@@ -14,6 +16,9 @@ from lib.schemas.unsplash import UnsplashResponse
 from lib.wrappers.installed_apps import check_image_magick
 from pydantic import AnyHttpUrl
 from starlette import status
+from ultralytics import YOLO
+
+logger = logging.getLogger(__name__)
 
 
 class ImageRotationEnum(IntEnum):
@@ -22,11 +27,29 @@ class ImageRotationEnum(IntEnum):
     flip_180: cv2.ROTATE_180
 
 
+class YOLOFaceDetectionEnum(StrEnum):
+    v11_large = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov11l-face.pt"
+    v11_medium = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov11m-face.pt"
+    v11_small = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov11s-face.pt"
+    v10_large = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov10l-face.pt"
+    v10_medium = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov10m-face.pt"
+    v10_small = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov10s-face.pt"
+    v8_large = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8l-face.pt"
+    v8_medium = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8m-face.pt"
+
+
+class YOLOPersonDetectionEnum(StrEnum):
+    v8_nano = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8n-person.pt"
+
+
 @dataclass(init=False)
 class ImageProcessingOpenCV:
     __image: cv2.Mat | np.ndarray
     __image_extension: str
     __image_name: str
+    __faces: list[tuple[int, int, int, int]] | None = None
+    __persons: list[tuple[int, int, int, int]] | None = None
+    __models_dir: Path = Path.home() / ".cache" / "flextk_models"
 
     def __init__(self, image_path: str):
         """
@@ -36,6 +59,9 @@ class ImageProcessingOpenCV:
         """
         self.select_image(image_path)
 
+        if not self.__models_dir.is_dir():
+            self.__models_dir.mkdir(parents=True, exist_ok=True)
+
     @property
     def image(self) -> cv2.Mat | np.ndarray:
         """
@@ -43,6 +69,22 @@ class ImageProcessingOpenCV:
         :return: The currently loaded image as a cv2.Mat or numpy ndarray.
         """
         return self.__image
+
+    @property
+    def faces(self) -> list[tuple[int, int, int, int]] | None:
+        """
+        Returns the list of detected faces.
+        :return: List of face bounding boxes in format (x, y, width, height)
+        """
+        return self.__faces
+
+    @property
+    def persons(self) -> list[tuple[int, int, int, int]] | None:
+        """
+        Returns the list of detected persons.
+        :return: List of person bounding boxes in format (x, y, width, height)
+        """
+        return self.__persons
 
     def select_image(self, image_path: str) -> Self:
         """
@@ -56,6 +98,226 @@ class ImageProcessingOpenCV:
 
         self.__image = cv2.imread(image_path)
         self.__image_name, self.__image_extension = os.path.splitext(os.path.basename(image_path))
+
+        return self
+
+    def detect_persons(
+        self,
+        output_dir: str | None = None,
+        yolo_model: YOLOPersonDetectionEnum = YOLOPersonDetectionEnum.v8_nano,
+        color: tuple[int, int, int] = (0, 255, 0),
+        thickness: int = 1,
+        save_individual_persons: bool = False,
+        confidence_threshold: float = 0.2,
+    ) -> Self:
+        """
+        Detects persons in the loaded image using YOLO person detection model.
+        :param output_dir: Directory where person images will be saved.
+        :param yolo_model: YOLO person detection model to use.
+        :param color: BGR color tuple for the rectangle.
+        :param thickness: Thickness of the rectangle lines.
+        :param save_individual_persons: If True, saves individual person crops; otherwise saves the whole image.
+        :param confidence_threshold: Threshold for person detection confidence (0.0-1.0).
+        :raise FileNotFoundError: If the model file does not exist.
+        :raise NotADirectoryError: If the output directory does not exist.
+        :return: The instance of the ImageProcessingOpenCV class.
+        """
+        model_name = yolo_model.value.split("/")[-1]
+        model_path = self.__models_dir / model_name
+
+        if model_path not in list(self.__models_dir.iterdir()):
+            logger.info(f"Downloading YOLO model: {yolo_model.value}")
+            response = requests.get(yolo_model.value)
+            if response.status_code == 200:
+                with open(model_path, "wb") as model_file:
+                    model_file.write(response.content)
+            else:
+                raise ConnectionError(f"Failed to download YOLO model: {response.status_code}, {response.reason}")
+
+        if not model_path.is_file():
+            raise FileNotFoundError(f"YOLO model file not found at {model_path}")
+
+        # Load YOLO model
+        model = YOLO(model_path)
+
+        # Convert image to RGB (YOLO expects RGB)
+        if len(self.__image.shape) == 2:
+            image_rgb = cv2.cvtColor(self.__image, cv2.COLOR_GRAY2RGB)
+        else:
+            image_rgb = cv2.cvtColor(self.__image, cv2.COLOR_BGR2RGB)
+
+        # Detect persons with YOLO (conf=0.001 to get all possible detections)
+        results = model.predict(image_rgb, conf=confidence_threshold, verbose=False)
+
+        persons_with_scores = []
+        for result in results:
+            for box in result.boxes:
+                conf = box.conf.item()
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                w = x2 - x1
+                h = y2 - y1
+                persons_with_scores.append((x1, y1, w, h, conf))
+
+        # Store all detected persons (regardless of confidence)
+        self.__persons = [(x, y, w, h) for (x, y, w, h, conf) in persons_with_scores]
+
+        if len(self.__persons) == 0:
+            logger.error(f"No persons detected in image: {self.__image_name}")
+            return self
+
+        # Create a copy to draw on
+        draw_img = self.__image.copy()
+
+        # Draw rectangles and process persons meeting confidence threshold
+        for i, (x, y, w, h, conf) in enumerate(persons_with_scores):
+            if conf >= confidence_threshold:
+                # Draw rectangle around the person
+                cv2.rectangle(draw_img, (x, y), (x + w, y + h), color, thickness)
+
+                # Add confidence text
+                confidence_text = f"Person:{conf:.0%}"
+                text_size = cv2.getTextSize(confidence_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+                cv2.rectangle(draw_img, (x, y - text_size[1] - 8), (x + text_size[0], y), color, -1)
+                cv2.putText(
+                    draw_img,
+                    confidence_text,
+                    (x, y - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
+
+        if output_dir is None:
+            return self
+
+        # Check output directory
+        if not os.path.isdir(output_dir):
+            raise NotADirectoryError(f"Output directory {output_dir} does not exist")
+
+        # Save image(s)
+        if save_individual_persons:
+            for i, (x, y, w, h, conf) in enumerate(persons_with_scores):
+                if conf >= confidence_threshold:
+                    person_img = self.__image[y : y + h, x : x + w]
+                    person_filename = f"{self.__image_name}_person_{i}{self.__image_extension}"
+                    person_path = os.path.join(output_dir, person_filename)
+                    cv2.imwrite(person_path, person_img)
+        else:
+            output_filename = f"{self.__image_name}_persons{self.__image_extension}"
+            output_path = os.path.join(output_dir, output_filename)
+            cv2.imwrite(output_path, draw_img)
+
+        return self
+
+    def detect_faces(
+        self,
+        output_dir: str | None = None,
+        yolo_model: YOLOFaceDetectionEnum = YOLOFaceDetectionEnum.v11_large,
+        color: tuple[int, int, int] = (0, 255, 0),
+        thickness: int = 1,
+        save_individual_faces: bool = False,
+        confidence_threshold: float = 0.2,
+    ) -> Self:
+        """
+        Detects faces in the loaded image using YOLO face detection model.
+        :param output_dir: Directory where face images will be saved.
+        :param yolo_model: YOLO face detection model to use.
+        :param color: BGR color tuple for the rectangle.
+        :param thickness: Thickness of the rectangle lines.
+        :param save_individual_faces: If True, saves individual face crops; otherwise saves the whole image.
+        :param confidence_threshold: Threshold for face detection confidence (0.0-1.0).
+        :raise FileNotFoundError: If the model file does not exist.
+        :raise NotADirectoryError: If the output directory does not exist.
+        :return: The instance of the ImageProcessingOpenCV class.
+        """
+        model_name = yolo_model.value.split("/")[-1]
+        model_path = self.__models_dir / model_name
+
+        if model_path not in list(self.__models_dir.iterdir()):
+            logger.info(f"Downloading YOLO model: {yolo_model.value}")
+            response = requests.get(yolo_model.value)
+            if response.status_code == 200:
+                with open(model_path, "wb") as model_file:
+                    model_file.write(response.content)
+            else:
+                raise ConnectionError(f"Failed to download YOLO model: {response.status_code}, {response.reason}")
+
+        if not model_path.is_file():
+            raise FileNotFoundError(f"YOLO model file not found at {model_path}")
+
+        # Load YOLO model
+        model = YOLO(model_path)
+
+        # Convert image to RGB (YOLO expects RGB)
+        if len(self.__image.shape) == 2:
+            image_rgb = cv2.cvtColor(self.__image, cv2.COLOR_GRAY2RGB)
+        else:
+            image_rgb = cv2.cvtColor(self.__image, cv2.COLOR_BGR2RGB)
+
+        # Detect faces with YOLO (conf=0.001 to get all possible detections)
+        results = model.predict(image_rgb, conf=confidence_threshold, verbose=False)
+
+        persons_with_scores = []
+        for result in results:
+            for box in result.boxes:
+                conf = box.conf.item()
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                w = x2 - x1
+                h = y2 - y1
+                persons_with_scores.append((x1, y1, w, h, conf))
+
+        # Store all detected faces (regardless of confidence)
+        self.__faces = [(x, y, w, h) for (x, y, w, h, conf) in persons_with_scores]
+
+        if len(self.__faces) == 0:
+            logger.error(f"No faces detected in image: {self.__image_name}")
+            return self
+
+        # Create a copy to draw on
+        draw_img = self.__image.copy()
+
+        # Draw rectangles and process faces meeting confidence threshold
+        for i, (x, y, w, h, conf) in enumerate(persons_with_scores):
+            if conf >= confidence_threshold:
+                # Draw rectangle around the face
+                cv2.rectangle(draw_img, (x, y), (x + w, y + h), color, thickness)
+
+                # Add confidence text
+                confidence_text = f"Face:{conf:.0%}"
+                text_size = cv2.getTextSize(confidence_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+                cv2.rectangle(draw_img, (x, y - text_size[1] - 8), (x + text_size[0], y), color, -1)
+                cv2.putText(
+                    draw_img,
+                    confidence_text,
+                    (x, y - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
+
+        if output_dir is None:
+            return self
+
+        # Check output directory
+        if not os.path.isdir(output_dir):
+            raise NotADirectoryError(f"Output directory {output_dir} does not exist")
+
+        # Save image(s)
+        if save_individual_faces:
+            for i, (x, y, w, h, conf) in enumerate(persons_with_scores):
+                if conf >= confidence_threshold:
+                    face_img = self.__image[y : y + h, x : x + w]
+                    face_filename = f"{self.__image_name}_face_{i}{self.__image_extension}"
+                    face_path = os.path.join(output_dir, face_filename)
+                    cv2.imwrite(face_path, face_img)
+        else:
+            output_filename = f"{self.__image_name}_faces{self.__image_extension}"
+            output_path = os.path.join(output_dir, output_filename)
+            cv2.imwrite(output_path, draw_img)
 
         return self
 
