@@ -14,11 +14,16 @@ import requests
 from lib.schemas.media import ImageDetails
 from lib.schemas.unsplash import UnsplashResponse
 from lib.wrappers.installed_apps import check_image_magick
+from PIL import Image, ImageDraw, ImageFont
 from pydantic import AnyHttpUrl
+from requests import Response
+from scrfd import SCRFD, Threshold
 from starlette import status
 from ultralytics import YOLO
 
 logger = logging.getLogger(__name__)
+
+type Number = int | float
 
 
 class ImageRotationEnum(IntEnum):
@@ -38,6 +43,12 @@ class YOLOFaceDetectionEnum(StrEnum):
     v8_medium = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8m-face.pt"
 
 
+class SCRFDFaceDetectionEnum(StrEnum):
+    scrfd_10g_bnkps = "1OAXx8U8SIsBhmYYGKmD-CLXrYz_YIV-3"
+    scrfd_2_5_g_bnkps = "1qnKTHMkuoWsCJ6iJeiFExGy5PSi8JKPL"
+    scrfd_500m_bnkps = "13mY-c6NIShu_-4AdCo3Z3YIYja4HfNaA"
+
+
 class YOLOPersonDetectionEnum(StrEnum):
     v8_nano = "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8n-person.pt"
 
@@ -47,7 +58,8 @@ class ImageProcessingOpenCV:
     __image: cv2.Mat | np.ndarray
     __image_extension: str
     __image_name: str
-    __faces: list[tuple[int, int, int, int]] | None = None
+    __image_path: str
+    __faces: list[tuple[Number, Number, Number, Number]] | None = None
     __persons: list[tuple[int, int, int, int]] | None = None
     __models_dir: Path = Path.home() / ".cache" / "flextk_models"
 
@@ -96,6 +108,7 @@ class ImageProcessingOpenCV:
         if not os.path.exists(image_path):
             raise FileNotFoundError("Image does not exist")
 
+        self.__image_path = image_path
         self.__image = cv2.imread(image_path)
         self.__image_name, self.__image_extension = os.path.splitext(os.path.basename(image_path))
 
@@ -211,7 +224,107 @@ class ImageProcessingOpenCV:
 
         return self
 
-    def detect_faces(
+    def detect_faces_scrfd(
+        self,
+        scrfd_model: SCRFDFaceDetectionEnum = SCRFDFaceDetectionEnum.scrfd_10g_bnkps,
+        output_dir: str | None = None,
+        color: tuple[int, int, int] = (0, 255, 0),
+        thickness: int = 1,
+        confidence_threshold: float = 0.2,
+        draw_key_points: bool = False,
+    ) -> Self:
+        """
+        Detects faces in the loaded image using SCRFD face detection model.
+        :param scrfd_model: SCRFD face detection model to use.
+        :param color: BGR color tuple for the rectangle.
+        :param thickness: Thickness of the rectangle lines.
+        :param output_dir: Directory where face images will be saved.
+        :param confidence_threshold: Threshold for face detection confidence (0.0-1.0).
+        :param draw_key_points: If True, draws key points on the detected faces.
+        :return: The instance of the ImageProcessingOpenCV class.
+        """
+        if output_dir is not None and not Path(output_dir).is_dir():
+            raise NotADirectoryError(f"Output directory {output_dir} does not exist")
+
+        model_name = f"{scrfd_model.name}.onnx"
+        model_path = self.__models_dir / model_name
+
+        if model_path not in list(self.__models_dir.iterdir()):
+            logger.info(f"Downloading SCRFD model: {scrfd_model.value}")
+            self._download_from_gdrive(str(scrfd_model.value), str(model_path))
+
+        if not model_path.is_file():
+            raise FileNotFoundError(f"SCRFD model file not found at {model_path}")
+
+        # Load SCRFD model
+        face_detector = SCRFD.from_path(model_path)
+        threshold = Threshold(probability=confidence_threshold)
+
+        # Use PIL only for detection, then convert back to OpenCV
+        pil_image = Image.open(self.__image_path).convert("RGB")
+        faces = face_detector.detect(pil_image, threshold=threshold)
+
+        # Create a copy to draw on
+        draw_img = self.__image.copy()
+
+        # Save faces in the image
+        self.__faces = [
+            (
+                face.bbox.upper_left.x,
+                face.bbox.upper_left.y,
+                face.bbox.lower_right.x - face.bbox.upper_left.x,
+                face.bbox.lower_right.y - face.bbox.upper_left.y,
+            )
+            for face in faces
+        ]
+
+        if len(self.__faces) == 0:
+            logger.error(f"No faces detected in image: {self.__image_name}")
+            return self
+
+        for face in faces:
+            bbox = face.bbox
+            x1 = int(bbox.upper_left.x)
+            y1 = int(bbox.upper_left.y)
+            x2 = int(bbox.lower_right.x)
+            y2 = int(bbox.lower_right.y)
+            w = x2 - x1
+            h = y2 - y1
+            score = face.probability
+
+            # Draw rectangle around the face
+            cv2.rectangle(draw_img, (x1, y1), (x2, y2), color, thickness)
+
+            # Add confidence text
+            confidence_text = f"Face:{score:.0%}"
+            text_size = cv2.getTextSize(confidence_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+            cv2.rectangle(draw_img, (x1, y1 - text_size[1] - 8), (x1 + text_size[0], y1), color, -1)
+            cv2.putText(
+                draw_img,
+                confidence_text,
+                (x1, y1 - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 0),
+                1,
+                cv2.LINE_AA,
+            )
+
+            # Draw key points
+            if draw_key_points:
+                for key_point in face.keypoints:
+                    _, (points) = key_point
+                    kp_x, kp_y = int(points.x), int(points.y)
+                    cv2.circle(draw_img, (kp_x, kp_y), 2, (255, 0, 0), -1)
+
+        if output_dir is not None:
+            output_filename = f"{self.__image_name}_faces_{self.__image_extension}"
+            output_path = os.path.join(output_dir, output_filename)
+            cv2.imwrite(output_path, draw_img)
+
+        return self
+
+    def detect_faces_yolo(
         self,
         output_dir: str | None = None,
         yolo_model: YOLOFaceDetectionEnum = YOLOFaceDetectionEnum.v11_large,
@@ -232,12 +345,15 @@ class ImageProcessingOpenCV:
         :raise NotADirectoryError: If the output directory does not exist.
         :return: The instance of the ImageProcessingOpenCV class.
         """
+        if output_dir is not None and not Path(output_dir).is_dir():
+            raise NotADirectoryError(f"Output directory {output_dir} does not exist")
+
         model_name = yolo_model.value.split("/")[-1]
         model_path = self.__models_dir / model_name
 
         if model_path not in list(self.__models_dir.iterdir()):
             logger.info(f"Downloading YOLO model: {yolo_model.value}")
-            response = requests.get(yolo_model.value)
+            response = requests.get(str(yolo_model.value))
             if response.status_code == 200:
                 with open(model_path, "wb") as model_file:
                     model_file.write(response.content)
@@ -301,10 +417,6 @@ class ImageProcessingOpenCV:
 
         if output_dir is None:
             return self
-
-        # Check output directory
-        if not os.path.isdir(output_dir):
-            raise NotADirectoryError(f"Output directory {output_dir} does not exist")
 
         # Save image(s)
         if save_individual_faces:
@@ -382,6 +494,57 @@ class ImageProcessingOpenCV:
         cv2.waitKey(0)
 
         return self
+
+    @staticmethod
+    def _download_from_gdrive(model_id: str, destination: str):
+        url = "https://docs.google.com/uc?export=download"
+
+        def get_confirm_token(token_response: Response):
+            for key, value in token_response.cookies.items():
+                if key.startswith("download_warning"):
+                    return {"confirm": value}
+
+            if "text/html" in token_response.headers["Content-Type"]:
+                m = re.search('.*confirm=([^"]*)', token_response.text, re.M)
+                if m and m.groups():
+                    return {"confirm": m.groups()[0]}
+                else:
+                    params = {}
+                    matches = re.findall(
+                        '<input type="hidden" name="(?P<name>[^"]*)" value="(?P<value>[^"]*)".*?>',
+                        token_response.text,
+                        re.M,
+                    )
+                    for match in matches:
+                        params[match[0]] = match[1]
+                    return params
+            return None
+
+        def save_response_content(token_response: Response, download_folder: str):
+            chunk_size = 1024
+
+            with open(download_folder, "wb") as f:
+                for chunk in token_response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+
+        session = requests.Session()
+        response = session.get(url, params={"id": model_id}, stream=True)
+        token = get_confirm_token(response)
+
+        if token:
+            if len(token) > 1:
+                url = "https://drive.usercontent.google.com/download"
+
+            token["id"] = model_id
+            headers = {"Range": "bytes=0-"}
+            response = session.get(url, params=token, headers=headers, stream=True)
+
+        if response.status_code not in (200, 206):
+            logger.error(f"Failed to download file, {response.text}")
+            raise RuntimeError(f"Failed downloading file {model_id}")
+
+        save_response_content(response, destination)
 
 
 @check_image_magick
