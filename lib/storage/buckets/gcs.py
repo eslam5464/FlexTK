@@ -95,25 +95,25 @@ class GCS:
         max_results: int | None = None,
         prefix: str | None = None,
     ) -> list[BucketDetails]:
-        buckets_found = self.__client.list_buckets(
+        buckets_found: Iterator[Bucket] = self.__client.list_buckets(
             max_results=max_results,
             prefix=prefix,
         )
 
         return [
             BucketDetails(
-                id=bucket_entry.get("id"),
-                name=bucket_entry.get("name"),
-                project_number=bucket_entry.get("projectNumber"),
-                owner=bucket_entry.get("owner"),
-                access_control_list=bucket_entry.get("acl"),
-                entity_tag=bucket_entry.get("etag"),
-                location=bucket_entry.get("location"),
-                location_type=bucket_entry.get("locationType"),
-                iam_configuration=bucket_entry.get("iamConfiguration"),
-                labels=bucket_entry.get("labels"),
-                creation_date=bucket_entry.get("timeCreated"),
-                modification_date=bucket_entry.get("updated"),
+                id=bucket_entry.id,
+                name=bucket_entry.name,
+                project_number=bucket_entry.project_number,
+                owner=bucket_entry.owner,
+                access_control_list=bucket_entry.acl,
+                entity_tag=bucket_entry.etag,
+                location=bucket_entry.location,
+                location_type=bucket_entry.location_type,
+                iam_configuration=bucket_entry.iam_configuration,
+                labels=bucket_entry.labels,
+                creation_date=bucket_entry.time_created,
+                modification_date=bucket_entry.updated,
             )
             for bucket_entry in buckets_found
         ]

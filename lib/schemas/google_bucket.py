@@ -2,6 +2,7 @@ import base64
 import os
 from datetime import datetime
 
+from google.cloud.storage.acl import BucketACL
 from pydantic import HttpUrl, field_validator
 
 from .base import BaseSchema
@@ -80,8 +81,8 @@ class BucketDetails(BaseSchema):
     id: str
     name: str
     project_number: int
-    owner: dict
-    access_control_list: list[dict] | None
+    owner: dict | None
+    access_control_list: list[BucketACL] | None
     entity_tag: str
     location: str
     location_type: str
