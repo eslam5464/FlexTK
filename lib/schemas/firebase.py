@@ -22,7 +22,7 @@ class FirebaseServiceAccount(BaseSchema):
     client_email: str
     client_id: str
     auth_uri: str = "https://accounts.google.com/o/oauth2/auth"
-    token_url: str = "https://oauth2.googleapis.com/token"
+    token_uri: str = "https://oauth2.googleapis.com/token"
     auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
     client_x509_cert_url: str = "https://www.googleapis.com/robot/v1/metadata/x509/"
     universe_domain: str = "googleapis.com"
