@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import firebase_admin
 import jwt
 import requests
-from firebase_admin import App, auth, credentials
+from firebase_admin import App, auth, credentials, messaging
 from firebase_admin.auth import ListUsersPage, UserNotFoundError, UserRecord
 from firebase_admin.credentials import Certificate
 from firebase_admin.exceptions import FirebaseError
@@ -148,6 +148,78 @@ class Firebase:
         except FirebaseError as err:
             logger.error(msg="Error getting all users", extra={"exception": err})
             raise ConnectionError("Unknown error getting all users")
+
+    def notify_a_device(
+        self,
+        device_token: str,
+        title: str,
+        content: str,
+    ) -> bool:
+        """
+        Send notification to a specific device
+        :param device_token: The device token to send the notification to
+        :param title: The title of the notification
+        :param content: The content of the notification
+        :return: True if the notification was sent successfully, False otherwise
+        """
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=title,
+                    body=content,
+                ),
+                token=device_token,
+            )
+
+            response = messaging.send(
+                message=message,
+                app=self._default_app,
+            )
+            logger.info(f"Push notification sent successfully: {response}")
+            return True
+        except Exception as e:
+            logger.error(f"Error sending push notification")
+            logger.debug(str(e))
+            return False
+
+    def notify_multiple_devices(
+        self,
+        device_tokens: list[str],
+        title: str,
+        content: str,
+    ) -> int:
+        """
+        Send notification to multiple devices, returns count of successful deliveries
+        :param device_tokens: The device token to send the notification to
+        :param title: The title of the notification
+        :param content: The content of the notification
+        :return: Count of successful deliveries
+        """
+        success_count = 0
+
+        for tokens_chunk_index in range(0, len(device_tokens), 500):
+            tokens_chunk = device_tokens[tokens_chunk_index : tokens_chunk_index + 500]
+
+            try:
+                message = messaging.MulticastMessage(
+                    notification=messaging.Notification(
+                        title=title,
+                        body=content,
+                    ),
+                    tokens=tokens_chunk,
+                )
+                response: messaging.BatchResponse = messaging.send_multicast(
+                    multicast_message=message,
+                    app=self._default_app,
+                )
+                success_count += response.success_count
+            except FirebaseError as err:
+                logger.error("Error sending push notification to multiple devices")
+                logger.debug(str(err))
+            except ValueError as err:
+                logger.error("Error sending push notification to multiple devices")
+                logger.debug(str(err))
+        return success_count
 
 
 class FirebaseAuth:
