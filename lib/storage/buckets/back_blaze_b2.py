@@ -66,7 +66,7 @@ class BlackBlaze:
         :return: The BlackBlaze instance.
         """
         try:
-            self.__b2_api.get_bucket_by_name(bucket_name)
+            self.__bucket = self.__b2_api.get_bucket_by_name(bucket_name)
         except NonExistentBucket as ex:
             raise B2BucketNotFoundError(
                 message=f"While selecting the bucket {bucket_name}, the bucket does not exist",

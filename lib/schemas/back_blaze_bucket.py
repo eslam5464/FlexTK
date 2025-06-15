@@ -8,7 +8,7 @@ class ApplicationData(BaseSchema):
 
 class FileDownloadLink(BaseSchema):
     download_url: str
-    auth_token: str | None
+    auth_token: str | None = None
 
 
 class UploadedFileInfo(BaseSchema):
