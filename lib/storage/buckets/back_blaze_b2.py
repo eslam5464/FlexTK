@@ -1,17 +1,20 @@
+import logging
 import os
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Self
+from typing import Optional, Self
 
+from b2sdk._internal.bucket import Bucket  # noqa
 from b2sdk._internal.file_version import FileVersion  # noqa
 from b2sdk.v2 import B2Api, B2RawHTTPApi, FileIdAndName, InMemoryAccountInfo
 from b2sdk.v2.b2http import B2Http
-from b2sdk.v2.bucket import Bucket
 from b2sdk.v2.exception import NonExistentBucket
 from lib.exceptions import (
+    B2AuthorizationError,
     B2BucketNotFoundError,
     B2BucketNotSelectedError,
-    BlackBlazeError,
+    B2BucketOperationError,
+    B2FileOperationError,
 )
 from lib.schemas.back_blaze_bucket import (
     ApplicationData,
@@ -22,273 +25,482 @@ from pydantic import AnyUrl
 
 
 class B2BucketTypeEnum(StrEnum):
-    all_public = "allPublic"
-    all_private = "allPrivate"
-    snapshot = "snapshot"
-    share = "share"
-    restricted = "restricted"
+    ALL_PUBLIC = "allPublic"
+    ALL_PRIVATE = "allPrivate"
+    SNAPSHOT = "snapshot"
+    SHARE = "share"
+    RESTRICTED = "restricted"
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(init=False)
-class BlackBlaze:
-    b2_raw: B2RawHTTPApi = field(default=B2RawHTTPApi(B2Http()))
-    __bucket: Bucket | None = field(default=None)
-    __b2_api: B2Api = field(default=B2Api(InMemoryAccountInfo()))
+class BackBlaze:
+    """
+    A client for interacting with BackBlaze B2 cloud storage service.
 
-    def __init__(self, app_data: ApplicationData):
+    Provides methods for bucket management and file operations including:
+    - Bucket selection, creation, deletion, and updates
+    - File upload, download, and deletion
+    - URL generation for file access
+    """
+
+    b2_raw: B2RawHTTPApi = field(default_factory=lambda: B2RawHTTPApi(B2Http()))
+    _bucket: Optional[Bucket] = field(default=None, init=False)
+    _b2_api: B2Api = field(default_factory=lambda: B2Api(InMemoryAccountInfo()), init=False)
+
+    def __init__(self, app_data: ApplicationData) -> None:
         """
-        A class representing the BlackBlazeB2 client for interacting with the BlackBlaze B2 cloud storage service.
-        It provides methods for interacting with the BlackBlaze B2 service, including authorization,
-        selecting a bucket, and performing various operations on the selected bucket.
-        :param app_data: Application data required to initiate black blaze connection
-        :raise BlackBlazeError: Black blaze not authorized
+        Initialize BackBlaze client with application credentials.
+
+        Args:
+            app_data: Application data containing app_id and app_key
+
+        Raises:
+            B2AuthorizationError: If authorization fails
         """
-        try:
-            self.__b2_api.authorize_account(
-                realm="production",
-                application_key_id=app_data.app_id,
-                application_key=app_data.app_key,
-            )
-        except Exception as ex:
-            raise BlackBlazeError(
-                message=f"Could not authorize back blaze account",
-                exception=ex,
-            )
+        self._authorize(app_data)
 
     @property
-    def bucket(self):
-        return self.__bucket
+    def bucket(self) -> Optional[Bucket]:
+        """Get the currently selected bucket."""
+        return self._bucket
 
-    def select_bucket(self, bucket_name) -> Self:
+    def select_bucket(self, bucket_name: str) -> Self:
         """
-        Select a bucket in black blaze b2
-        :param bucket_name: 'example-my-bucket-b2-1'  # must be unique in B2 (across all accounts!)
-        :return: The BlackBlaze instance.
+        Select an existing bucket.
+
+        Args:
+            bucket_name: Name of the bucket to select
+
+        Returns:
+            Self for method chaining
+
+        Raises:
+            B2BucketOperationError: If bucket selection fails
+            B2BucketNotFoundError: If the bucket does not exist
+            ValueError: If bucket name is empty
         """
+        if not bucket_name.strip():
+            raise ValueError("Bucket name cannot be empty")
+
         try:
-            self.__bucket = self.__b2_api.get_bucket_by_name(bucket_name)
+            self._bucket = self._b2_api.get_bucket_by_name(bucket_name)
+            logger.info(f"Successfully selected bucket: {bucket_name}")
+            return self
         except NonExistentBucket as ex:
-            raise B2BucketNotFoundError(
-                message=f"While selecting the bucket {bucket_name}, the bucket does not exist",
-                exception=ex,
-            )
+            error_msg = f"Bucket '{bucket_name}' does not exist"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2BucketNotFoundError(error_msg) from ex
         except Exception as ex:
-            raise BlackBlazeError(
-                f"Error while selecting the bucket {bucket_name}, ex: {ex}",
-            )
+            error_msg = f"Failed to select bucket '{bucket_name}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2BucketNotSelectedError(error_msg) from ex
 
-        return self
-
-    def create_b2_bucket(self, bucket_name: str, bucket_type: B2BucketTypeEnum) -> Self:
+    def list_buckets(self) -> list[Bucket]:
         """
-        Create a bucket in black blaze b2
-        :param bucket_name: 'example-my-bucket-b2-1'  # must be unique in B2 (across all accounts!)
-        :param bucket_type: 'allPublic'  # or 'allPrivate'
-        :return: The BlackBlaze instance.
+        List all buckets in the account.
+
+        Returns:
+            List of Bucket objects
+
+        Raises:
+            B2FileOperationError: If bucket listing fails
         """
         try:
-            self.__b2_api.create_bucket(name=bucket_name, bucket_type=bucket_type)
+            buckets = self._b2_api.list_buckets()
+            logger.info("Successfully retrieved list of buckets")
+            return list(buckets)
         except Exception as ex:
-            raise BlackBlazeError(
-                message=f"Could not create bucket {bucket_name}",
-                exception=ex,
-            )
+            error_msg = "Failed to list buckets"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
-        return self
+    def create_bucket(self, bucket_name: str, bucket_type: B2BucketTypeEnum) -> Self:
+        """
+        Create a new bucket.
+
+        Args:
+            bucket_name: Unique name for the bucket
+            bucket_type: Type of bucket to create
+
+        Returns:
+            Self for method chaining
+
+        Raises:
+            B2BucketOperationError: If bucket creation fails
+            ValueError: If bucket name is empty
+        """
+        if not bucket_name.strip():
+            raise ValueError("Bucket name cannot be empty")
+
+        try:
+            self._b2_api.create_bucket(name=bucket_name, bucket_type=bucket_type.value)
+            logger.info(f"Successfully created bucket: {bucket_name}")
+            return self
+        except Exception as ex:
+            error_msg = f"Failed to create bucket '{bucket_name}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
     def delete_selected_bucket(self) -> Self:
         """
-        Delete the currently selected BlackBlaze B2 bucket.
-        :return: The BlackBlaze instance.
+        Delete the currently selected bucket.
+
+        Returns:
+            Self for method chaining
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2BucketOperationError: If deletion fails
+            B2BucketNotFoundError: If the bucket does not exist
         """
-        self.__check_bucket_is_selected()
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        bucket_name = self._bucket.name
+        if not bucket_name:
+            raise B2BucketNotSelectedError("Selected bucket has no name")
 
         try:
-            bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
-            self.__b2_api.delete_bucket(bucket)
+            bucket = self._b2_api.get_bucket_by_name(bucket_name)
+            self._b2_api.delete_bucket(bucket)
+            self._bucket = None  # Clear selected bucket
+            logger.info(f"Successfully deleted bucket: {bucket_name}")
+            return self
         except NonExistentBucket as ex:
-            raise B2BucketNotFoundError(
-                message=f"While deleting selected bucket {self.__bucket.name}, the bucket does not exist",
-                exception=ex,
-            )
+            error_msg = f"Bucket '{bucket_name}' does not exist"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2BucketNotFoundError(error_msg) from ex
         except Exception as ex:
-            raise BlackBlazeError(
-                f"Error while deleting selected bucket {self.__bucket.name}",
-                exception=ex,
-            )
-
-        return self
+            error_msg = f"Failed to delete bucket '{bucket_name}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2BucketOperationError(error_msg) from ex
 
     def update_selected_bucket(
         self,
-        bucket_type: B2BucketTypeEnum | None = None,
-        bucket_info: dict | None = None,
+        bucket_type: Optional[B2BucketTypeEnum] = None,
+        bucket_info: Optional[dict] = None,
     ) -> Self:
         """
-        Update the properties of the currently selected BlackBlaze B2 bucket.
-        :param bucket_type: The new type of the bucket (e.g., BucketTypeEnum.ALL_PUBLIC).
-        :param bucket_info: The info to store with the bucket
-        :return: The BlackBlaze instance.
+        Update properties of the currently selected bucket.
+
+        Args:
+            bucket_type: New bucket type
+            bucket_info: New bucket info
+
+        Returns:
+            Self for method chaining
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2BucketOperationError: If update fails
         """
-        self.__check_bucket_is_selected()
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        bucket_name = self._bucket.name
+        if not bucket_name:
+            raise B2BucketNotSelectedError("Selected bucket has no name")
 
         try:
-            bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
-            bucket_type = bucket_type.value if isinstance(bucket_type, B2BucketTypeEnum) else None
-            bucket.update(
-                bucket_type=bucket_type,
-                bucket_info=bucket_info,
-            )
-
+            bucket = self._b2_api.get_bucket_by_name(bucket_name)
+            bucket_type_value = bucket_type.value if bucket_type else None
+            bucket.update(bucket_type=bucket_type_value, bucket_info=bucket_info)
+            logger.info(f"Successfully updated bucket: {bucket_name}")
             return self
-        except NonExistentBucket as ex:
-            raise BlackBlazeError(
-                f"While updating selected bucket {self.__bucket.name}, the bucket does not exist, ex: {ex}",
-            )
         except Exception as ex:
-            raise BlackBlazeError(
-                f"Error while updating selected bucket {self.__bucket.name}, ex: {ex}",
-            )
+            error_msg = f"Failed to update bucket '{bucket_name}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2BucketOperationError(error_msg) from ex
 
     def upload_file(
         self,
         local_file_path: str,
         b2_file_name: str,
-        file_info: UploadedFileInfo | None = None,
+        file_info: Optional[UploadedFileInfo] = None,
     ) -> FileVersion:
         """
-        Uploads a file to the selected BlackBlaze B2 bucket.
-        :param local_file_path: a path to a file on local disk
-        :param b2_file_name: a file name of the new B2 file
-        :param file_info: a file info to store with the file or None to not store anything
-        :return: A FileVersion object representing the uploaded file.
-        """
-        self.__check_bucket_is_selected()
+        Upload a file to the selected bucket.
 
-        if file_info is None:
-            file_info = UploadedFileInfo(
-                scanned=False,
-            )
+        Args:
+            local_file_path: Path to local file
+            b2_file_name: Name for the file in B2
+            file_info: Optional file metadata
+
+        Returns:
+            FileVersion object of uploaded file
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2FileOperationError: If upload fails
+            ValueError: If local file path or B2 file name is empty
+            FileNotFoundError: If local file does not exist
+        """
+
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        self._validate_file_path(local_file_path)
+
+        if not b2_file_name.strip():
+            raise ValueError("B2 file name cannot be empty")
+
+        file_info = file_info or UploadedFileInfo(scanned=False)
+
+        bucket_name = self._bucket.name
+        if not bucket_name:
+            raise B2BucketNotSelectedError("Selected bucket has no name")
 
         try:
-            bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
-
-            return bucket.upload_local_file(
+            bucket = self._b2_api.get_bucket_by_name(bucket_name)
+            result = bucket.upload_local_file(
                 local_file=local_file_path,
                 file_name=b2_file_name,
                 file_info=file_info.model_dump(),
             )
+            logger.info(f"Successfully uploaded file: {b2_file_name}")
+            return result
         except Exception as ex:
-            os.remove(local_file_path)
-            raise BlackBlazeError(
-                message=f"Error while uploading file '{local_file_path}'",
-                exception=ex,
-            )
+            self._cleanup_failed_upload(local_file_path)
+            error_msg = f"Failed to upload file '{local_file_path}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
-    def get_download_url_by_name(
-        self,
-        file_name: str,
-    ) -> FileDownloadLink:
+    def get_download_url_by_name(self, file_name: str) -> FileDownloadLink:
         """
-        Gets the download url
-        :param file_name: full path for the file
-        :return: FileDownloadLink object
-        """
-        self.__check_bucket_is_selected()
+        Get download URL for a file by name.
 
-        bucket = self.__b2_api.get_bucket_by_name(self.__bucket.name)
-        try:
-            return FileDownloadLink(
-                download_url=bucket.get_download_url(file_name),
-            )
-        except Exception as ex:
-            raise BlackBlazeError(
-                f"Error while getting download url for file name '{file_name}'",
-                exception=ex,
-            )
+        Args:
+            file_name: Name of the file
 
-    def get_download_url_by_file_id(
-        self,
-        file_id: str,
-    ) -> FileDownloadLink:
+        Returns:
+            FileDownloadLink object
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2FileOperationError: If URL generation fails
+            ValueError: If file name is empty
         """
-        Gets the download url using id for the file.
-        :param file_id: File id in the selected bucket
-        :return: FileDownloadLink object
-        """
-        self.__check_bucket_is_selected()
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        if not file_name.strip():
+            raise ValueError("File name cannot be empty")
+
+        bucket_name = self._bucket.name
+        if not bucket_name:
+            raise B2BucketNotSelectedError("Selected bucket has no name")
 
         try:
-            return FileDownloadLink(
-                download_url=self.__b2_api.get_download_url_for_fileid(file_id),
-            )
+            bucket = self._b2_api.get_bucket_by_name(bucket_name)
+            download_url = bucket.get_download_url(file_name)
+            return FileDownloadLink(download_url=download_url)
         except Exception as ex:
-            raise BlackBlazeError(
-                message=f"Error while getting download url for file with id '{file_id}'",
-                exception=ex,
-            )
+            error_msg = f"Failed to get download URL for file '{file_name}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
+
+    def get_download_url_by_file_id(self, file_id: str) -> FileDownloadLink:
+        """
+        Get download URL for a file by ID.
+
+        Args:
+            file_id: ID of the file
+
+        Returns:
+            FileDownloadLink object
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2FileOperationError: If URL generation fails
+            ValueError: If file ID is empty
+        """
+        if not file_id.strip():
+            raise ValueError("File ID cannot be empty")
+
+        try:
+            download_url = self._b2_api.get_download_url_for_fileid(file_id)
+            return FileDownloadLink(download_url=download_url)
+        except Exception as ex:
+            error_msg = f"Failed to get download URL for file ID '{file_id}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
     def delete_file(self, file_id: str, file_name: str) -> FileIdAndName:
         """
-        Delete a file from the currently selected BlackBlaze B2 bucket.
-        :param file_id: The ID of the file to be deleted.
-        :param file_name: The name of the file to be deleted.
-        :return: A FileIdAndName object representing the deleted file.
+        Delete a file from the selected bucket.
+
+        Args:
+            file_id: ID of the file to delete
+            file_name: Name of the file to delete
+
+        Returns:
+            FileIdAndName object of deleted file
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2FileOperationError: If deletion fails
+            ValueError: If file ID or name is empty
         """
-        self.__check_bucket_is_selected()
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        if not file_id.strip() or not file_name.strip():
+            raise ValueError("File ID and name cannot be empty")
 
         try:
-            return self.__b2_api.delete_file_version(
-                file_id=file_id,
-                file_name=file_name,
-            )
+            result = self._b2_api.delete_file_version(file_id=file_id, file_name=file_name)
+            logger.info(f"Successfully deleted file: {file_name}")
+            return result
         except Exception as ex:
-            raise BlackBlazeError(
-                message=f"Error while deleting '{file_name}' with file id '{file_id}'",
-                exception=ex,
-            )
+            error_msg = f"Failed to delete file '{file_name}' (ID: {file_id})"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
-    def get_temp_download_link(
+    def get_temporary_download_link(
         self,
         url: AnyUrl,
         valid_duration_in_seconds: int = 900,
     ) -> FileDownloadLink:
         """
-        Get the download link and the authorization header token for the get request
-        :param valid_duration_in_seconds: Duration in seconds, default is 15 minutes
-        :param url: Download link with file id
-        :return: FileDownloadLink object
+        Get temporary download link with authorization token.
+
+        Args:
+            url: Download URL containing file ID
+            valid_duration_in_seconds: Link validity duration (default: 15 minutes)
+
+        Returns:
+            FileDownloadLink with auth token
+
+        Raises:
+            B2BucketNotSelectedError: If no bucket is selected
+            B2FileOperationError: If link generation fails
+            ValueError: If duration is not positive
+            ValueError: If URL does not contain file ID parameter
         """
-        self.__check_bucket_is_selected()
+        if not self._bucket:
+            raise B2BucketNotSelectedError("No bucket is selected for this operation")
+
+        if valid_duration_in_seconds <= 0:
+            raise ValueError("Duration must be positive")
+
+        file_id = self._extract_file_id_from_url(url)
 
         try:
-            file_id = url.__str__().split("fileId=")[-1]
-            file_info = self.__bucket.get_file_info_by_id(file_id)
-            auth_token = self.__bucket.get_download_authorization(
+            file_info = self._bucket.get_file_info_by_id(file_id)
+            auth_token = self._bucket.get_download_authorization(
                 file_name_prefix=file_info.file_name,
                 valid_duration_in_seconds=valid_duration_in_seconds,
             )
-            download_url = self.__bucket.get_download_url(file_info.file_name)
+            download_url = self._bucket.get_download_url(file_info.file_name)
 
-            return FileDownloadLink(
-                download_url=download_url,
-                auth_token=auth_token,
-            )
+            return FileDownloadLink(download_url=download_url, auth_token=auth_token)
         except Exception as ex:
-            raise BlackBlazeError(message=f"Can not get download url", exception=ex)
+            error_msg = f"Failed to get temporary download link for file ID '{file_id}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
-    def get_file_details_with_id(self, file_id: str) -> FileVersion:
+    def get_file_details(self, file_id: str) -> FileVersion:
         """
-        Retrieve file details using the file ID.
-        :param file_id: The ID of the file for which you want to retrieve details.
-        :return: A FileVersion object representing the details of the specified file.
+        Get file details by ID.
+
+        Args:
+            file_id: ID of the file
+
+        Returns:
+            FileVersion object with file details
+
+        Raises:
+            B2FileOperationError: If retrieval fails
+            ValueError: If file ID is empty
         """
-        self.__check_bucket_is_selected()
+        if not file_id.strip():
+            raise ValueError("File ID cannot be empty")
 
-        return self.__b2_api.get_file_info(file_id)
+        try:
+            return self._b2_api.get_file_info(file_id)
+        except Exception as ex:
+            error_msg = f"Failed to get file details for ID '{file_id}'"
+            logger.error(error_msg)
+            logger.debug(str(ex))
+            raise B2FileOperationError(error_msg) from ex
 
-    def __check_bucket_is_selected(self):
-        if not self.__bucket:
-            raise B2BucketNotSelectedError(
-                "No bucket is selected to perform this operation",
+    def _authorize(self, app_data: ApplicationData) -> None:
+        """
+        Authorize with BackBlaze B2 service.
+        Args:
+            app_data: Application data containing app_id and app_key
+        Raises:
+            B2AuthorizationError: If authorization fails
+        """
+        try:
+            self._b2_api.authorize_account(
+                realm="production",
+                application_key_id=app_data.app_id,
+                application_key=app_data.app_key,
             )
+            logger.info("Successfully authorized BackBlaze account")
+        except Exception as ex:
+            logger.error("Failed to authorize BackBlaze account")
+            logger.debug(str(ex))
+            raise B2AuthorizationError("Failed to authorize BackBlaze account") from ex
+
+    @staticmethod
+    def _validate_file_path(self, file_path: str) -> None:
+        """
+        Validate the local file path.
+        Args:
+            file_path: Path to the local file
+        Raises:
+            ValueError: If file path is empty
+            FileNotFoundError: If file does not exist
+        """
+        if not file_path.strip():
+            raise ValueError("File path cannot be empty")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+    @staticmethod
+    def _cleanup_failed_upload(self, local_file_path: str) -> None:
+        """
+        Clean up local file after failed upload.
+        Args:
+            local_file_path: Path to the local file
+        """
+        try:
+            if os.path.exists(local_file_path):
+                os.remove(local_file_path)
+                logger.info(f"Cleaned up local file after failed upload: {local_file_path}")
+        except OSError as ex:
+            logger.warning(f"Failed to clean up local file: {local_file_path}")
+            logger.debug(str(ex))
+
+    @staticmethod
+    def _extract_file_id_from_url(self, url: AnyUrl) -> str:
+        """
+        Extract file ID from URL.
+        Args:
+            url: Download URL containing file ID
+        Returns:
+            Extracted file ID as string
+        Raises:
+            ValueError: If URL does not contain file ID parameter
+        """
+        url_str = str(url)
+        if "fileId=" not in url_str:
+            raise ValueError("URL does not contain file ID parameter")
+        return url_str.split("fileId=")[-1]

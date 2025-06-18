@@ -6,7 +6,7 @@ import click
 from core.helpers import get_bb2_configuration
 from core.schema import ClickColors, ContextKeys
 from lib.schemas.back_blaze_bucket import ApplicationData
-from lib.storage.buckets.back_blaze_b2 import B2BucketTypeEnum, BlackBlaze
+from lib.storage.buckets.back_blaze_b2 import B2BucketTypeEnum, BackBlaze
 
 B2_BUCKET_TYPE_VALUES = [e.value for e in B2BucketTypeEnum]
 
@@ -25,7 +25,7 @@ def bb2(
         app_key=bb2_config_data.app_key,
     )
     ctx.obj[ContextKeys.cloud_bb2_config] = bb2_config_data
-    ctx.obj[ContextKeys.cloud_bb2] = BlackBlaze(bb2_data)
+    ctx.obj[ContextKeys.cloud_bb2] = BackBlaze(bb2_data)
 
 
 @click.command()
@@ -40,7 +40,7 @@ def select_bucket(
     bucket_name: str,
 ):
     """Select a bucket in Black Blaze b2"""
-    black_blaze: BlackBlaze = ctx.obj[ContextKeys.cloud_bb2]
+    black_blaze: BackBlaze = ctx.obj[ContextKeys.cloud_bb2]
     ctx.obj[ContextKeys.cloud_bb2] = black_blaze.select_bucket(bucket_name)
     click.secho(f"Selected bucket {bucket_name}", fg=ClickColors.green)
 
@@ -56,11 +56,11 @@ def select_bucket(
 def create_bucket(
     ctx: click.Context,
     bucket_name: str,
-    bucket_type: Literal[B2_BUCKET_TYPE_VALUES] = B2BucketTypeEnum.all_private,  # noqa
+    bucket_type: Literal[B2_BUCKET_TYPE_VALUES] = B2BucketTypeEnum.ALL_PRIVATE,  # noqa
 ):
     """Create a bucket in Black Blaze b2"""
-    black_blaze: BlackBlaze = ctx.obj[ContextKeys.cloud_bb2]
-    black_blaze.create_b2_bucket(bucket_name, bucket_type)
+    black_blaze: BackBlaze = ctx.obj[ContextKeys.cloud_bb2]
+    black_blaze.create_bucket(bucket_name, bucket_type)
     click.secho(f"Created bucket {bucket_name}", fg=ClickColors.green)
 
 
@@ -82,7 +82,7 @@ def upload_file(
     bucket_path: str,
 ):
     """Upload a file to the bucket in Black Blaze b2"""
-    black_blaze: BlackBlaze = ctx.obj[ContextKeys.cloud_bb2]
+    black_blaze: BackBlaze = ctx.obj[ContextKeys.cloud_bb2]
     black_blaze.upload_file(local_file_path=file_path, b2_file_name=bucket_path)
     click.secho(f"Uploaded {os.path.basename(file_path)} to {bucket_path}", fg=ClickColors.green)
 
@@ -104,7 +104,7 @@ def get_download_url(
         )
         sys.exit()
 
-    black_blaze: BlackBlaze = ctx.obj[ContextKeys.cloud_bb2]
+    black_blaze: BackBlaze = ctx.obj[ContextKeys.cloud_bb2]
 
     if file_id:
         download_url = black_blaze.get_download_url_by_file_id(file_id)
@@ -134,7 +134,7 @@ def delete_file(
         )
         sys.exit()
 
-    black_blaze: BlackBlaze = ctx.obj[ContextKeys.cloud_bb2]
+    black_blaze: BackBlaze = ctx.obj[ContextKeys.cloud_bb2]
     black_blaze.delete_file(file_id, file_name)
     click.secho(f"File deleted", fg=ClickColors.green)
 
