@@ -5,7 +5,8 @@ from typing import Any
 import firebase_admin
 from firebase_admin import App, credentials, firestore
 from firebase_admin.credentials import Certificate
-from google.cloud.firestore_v1 import Client
+from google.cloud.exceptions import NotFound
+from google.cloud.firestore import Client
 from lib.schemas.firebase import FirebaseServiceAccount
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class Firestore:
             app_exists = False
 
         try:
-            if app_exists is False:
+            if not app_exists:
                 self._app_certificate = credentials.Certificate(service_account.model_dump())
                 self._default_app = firebase_admin.initialize_app(
                     credential=self._app_certificate,
@@ -124,6 +125,12 @@ class Firestore:
                 msg=f"Document updated in collection {collection_name} with ID {document_id}",
                 extra={"document_data": data},
             )
+        except NotFound as ex:
+            logger.error(
+                msg=f"Document with ID {document_id} not found in collection {collection_name}",
+                extra={"exception": ex},
+            )
+            raise ex
         except Exception as ex:
             logger.error(
                 msg=f"Error updating document in collection {collection_name}",
