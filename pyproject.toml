@@ -32,6 +32,7 @@ firebase-admin = "^6.7.0"
 ultralytics = "^8.3.119"
 dill = "^0.4.0"
 scrfd = "^0.3.0"
+stripe = "^12.2.0"
 
 [tool.poetry.dev-dependencies]
 black = "^24.4.2"
