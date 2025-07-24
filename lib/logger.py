@@ -2,7 +2,11 @@ import json
 import logging
 import logging.config
 import os.path
+import sys
 from datetime import datetime, timezone
+
+from core.config import settings
+from loguru import logger
 
 LOG_RECORD_BUILTIN_ATTRS = {
     "args",
@@ -109,3 +113,86 @@ def configure_logging() -> None:
 
     config["handlers"]["file_json"]["filename"] = log_file_path
     logging.config.dictConfig(config)
+
+
+class InterceptHandler(logging.Handler):
+    """
+    Intercept standard logging messages toward loguru sinks.
+    """
+
+    def emit(self, record):
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame, depth = logging.currentframe(), 2
+
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+def configure_logging_new() -> None:
+    """
+    Configure the logging system for the application
+    """
+    # Remove default logger
+    logger.remove()
+
+    # Log format for console output
+    log_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
+        "<magenta>{process: <6}</magenta> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "<level>{message}</level>"
+    )
+    log_file_format = "{time:YYYY-MM-DD HH:mm:ss!UTC} | " "{level: <8} | " "{name}:{function}:{line} | " "{message}"
+
+    # Add console handler
+    logger.add(
+        sys.stdout,
+        format=log_format,
+        level=settings.log_level,
+        colorize=True,
+    )
+
+    # Add a file handler for more detailed logs
+    logger.add(
+        f"logs{os.sep}app.log",
+        rotation="10 MB",
+        retention="1 month",
+        compression="zip",
+        format=log_file_format,
+        level=logging.NOTSET,
+        backtrace=True,
+        diagnose=True,
+        enqueue=True,
+    )
+
+    logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+
+    # Set up loggers for FastAPI, Uvicorn, and other libraries
+    loggers_to_intercept = [
+        "fastapi",
+        "uvicorn",
+        "uvicorn.access",
+        "uvicorn.error",
+        "sqlalchemy.engine",
+        "sqlalchemy.pool",
+        "httpx",
+        "redis",
+    ]
+
+    for logger_name in loggers_to_intercept:
+        logging_logger = logging.getLogger(logger_name)
+        logging_logger.handlers = [InterceptHandler()]
+        logging_logger.propagate = False
+
+    # Log the start of the application
+    logger.info(f"Logging configured with level {settings.log_level}")
