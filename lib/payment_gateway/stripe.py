@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 import stripe
+from lib.schemas.stripe import CustomerCreate
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,28 @@ class StripePaymentGateway:
     @property
     def client(self) -> stripe.StripeClient:
         return self._client
+
+    def create_customer(self, customer_data: CustomerCreate):
+        """
+        Create a new customer in Stripe
+
+        Args:
+            customer_data (CustomerCreate): Data for the new customer
+
+        Returns:
+            stripe.Customer: Created Customer object
+
+        Raises:
+            ConnectionError: If the customer creation fails
+        """
+        try:
+            customer = self._client.customers.create(**customer_data.model_dump(exclude_unset=True))
+            logger.info(f"Customer created: {customer.id}")
+            return customer
+        except stripe.StripeError as e:
+            logger.error("Customer creation failed")
+            logger.debug(str(e))
+            raise ConnectionError("Failed to create customer") from e
 
     def create_payment_intent(
         self,
