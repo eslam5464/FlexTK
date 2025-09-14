@@ -34,6 +34,8 @@ dill = "^0.4.0"
 scrfd = "^0.3.0"
 stripe = "^12.2.0"
 loguru = "^0.7.3"
+python-keycloak = "^5.8.1"
+pyjwt = "^2.10.1"
 
 [tool.poetry.dev-dependencies]
 black = "^24.4.2"
