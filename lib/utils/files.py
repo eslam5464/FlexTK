@@ -2,9 +2,13 @@ import hashlib
 import json
 import mimetypes
 import os
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal
+from urllib.parse import urlparse
 
+import aiofiles
+import aiohttp
 import crc32c
 import pandas as pd
 from pandera.api.base.model import MetaModel
@@ -174,3 +178,37 @@ def calculate_crc32c_checksum(file_location: str) -> int:
         data = file_bytes.read()
 
     return crc32c.crc32c(data)
+
+
+async def download_file(url: str, file_download_path: Path) -> Path:
+    """
+    Downloads a file from the given URL and saves it to the specified path.
+
+    Args:
+        url (str): The URL of the file to download.
+        file_download_path (Path): The path where the downloaded file will be saved.
+
+    Returns:
+        Path: The path to the downloaded file.
+
+    Raises:
+        NotADirectoryError: If the directory for the file_download_path does not exist.
+        ValueError: If the URL is not valid.
+    """
+    try:
+        urlparse(url)
+    except:
+        raise ValueError(f"The URL {url} is not valid.")
+
+    if not file_download_path.parent.exists():
+        raise NotADirectoryError(f"The directory {file_download_path.parent} does not exist.")
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            response.raise_for_status()
+
+            async with aiofiles.open(file_download_path, "wb") as f:
+                async for chunk in response.content.iter_chunked(1024):
+                    await f.write(chunk)
+
+            return file_download_path
